@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Laudo Voo",
+    "slug": "laudo-voo",
+    "version": "1.0.0",
+    "sdkVersion": "54.0.0",
+    "orientation": "portrait",
+    "scheme": "laudovoo",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.laudovoo.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Precisamos da câmera para fotografar o equipamento.",
+        "NSPhotoLibraryUsageDescription": "Precisamos da galeria para selecionar fotos do equipamento."
+      }
+    },
+    "android": {
+      "package": "com.laudovoo.app",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Precisamos da galeria para selecionar fotos do equipamento.",
+          "cameraPermission": "Precisamos da câmera para fotografar o equipamento."
+        }
+      ],
+      "expo-sqlite",
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

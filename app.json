@@ -1,15 +1,22 @@
 {
   "expo": {
-    "name": "Laudo Voo",
+    "name": "Cia do Ar",
     "slug": "laudo-voo",
     "version": "1.0.0",
     "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "scheme": "laudovoo",
-    "userInterfaceStyle": "dark",
+    "icon": "./assets/images/icon.png",
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.laudovoo.app",
+      "icon": "./assets/images/icon.png",
       "infoPlist": {
         "NSCameraUsageDescription": "Precisamos da câmera para fotografar o equipamento.",
         "NSPhotoLibraryUsageDescription": "Precisamos da galeria para selecionar fotos do equipamento."
@@ -17,11 +24,10 @@
     },
     "android": {
       "package": "com.laudovoo.app",
-      "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -41,6 +47,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5782bfd6-c4af-4c71-9474-601d6a9ca2cf"
+      }
     }
   }
 }

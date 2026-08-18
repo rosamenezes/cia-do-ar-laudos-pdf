@@ -1,11 +1,11 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Laudo } from '../types/laudo';
+import { LaudoParapente } from '../types/laudo';
 import { generateLaudoHtml } from '../templates/laudoTemplate';
 import { updatePdfUri } from './database';
 
-export async function generateAndSavePdf(laudo: Laudo): Promise<string> {
+export async function generateAndSavePdf(laudo: LaudoParapente): Promise<string> {
   const html = await generateLaudoHtml(laudo);
 
   // Gerar PDF
@@ -41,7 +41,7 @@ export async function sharePdf(pdfUri: string): Promise<void> {
   });
 }
 
-export async function generateAndShare(laudo: Laudo): Promise<string> {
+export async function generateAndShare(laudo: LaudoParapente): Promise<string> {
   const pdfUri = await generateAndSavePdf(laudo);
   await sharePdf(pdfUri);
   return pdfUri;

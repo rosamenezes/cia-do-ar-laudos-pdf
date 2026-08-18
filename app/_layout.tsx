@@ -4,15 +4,15 @@ import { View } from 'react-native';
 
 export default function RootLayout() {
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0e1a' }}>
-      <StatusBar style="light" backgroundColor="#0a0e1a" />
+    <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+      <StatusBar style="dark" backgroundColor="#ffffff" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: '#0a0e1a' },
-          headerTintColor: '#f1f5f9',
+          headerStyle: { backgroundColor: '#ffffff' },
+          headerTintColor: '#1e293b',
           headerTitleStyle: { fontWeight: '700' },
-          contentStyle: { backgroundColor: '#0a0e1a' },
-          headerShadowVisible: false,
+          contentStyle: { backgroundColor: '#f8fafc' },
+          headerShadowVisible: true,
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

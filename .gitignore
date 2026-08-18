@@ -4,3 +4,13 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+node_modules/
+.expo/
+dist/
+npm-debug.log
+yarn-error.log
+
+# Pastas nativas (ignoradas no fluxo gerenciado)
+ios/
+android/

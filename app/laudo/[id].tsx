@@ -10,11 +10,17 @@ import {
   Image,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LaudoParapente } from '../../src/types/laudo';
 import { getLaudoById, deleteLaudo } from '../../src/services/database';
 import { generateAndShare, generateAndSavePdf } from '../../src/services/pdfGenerator';
-import { PARECER_GERAL_LABELS, PARECER_GERAL_COLORS, PARECER_GERAL_SHORT_LABELS } from '../../src/types/constants';
+import {
+  PARECER_GERAL_LABELS,
+  PARECER_GERAL_COLORS,
+  PARECER_GERAL_SHORT_LABELS,
+} from '../../src/types/constants';
+import { PdfViewerModal } from '../../src/components/PdfViewerModal';
 
 // Função pura fora do componente — não recriada a cada render
 function formatDate(iso: string): string {
@@ -27,17 +33,14 @@ const GOOD_PARECERES = new Set(['OTIMO', 'MUITO_BOM', 'USADO_BOM_ESTADO']);
 
 export default function LaudoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const [laudo, setLaudo] = useState<LaudoParapente | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-
-  useEffect(() => {
-    loadLaudo();
-  }, [id]);
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   const loadLaudo = useCallback(async () => {
     try {
-      setLoading(true);
       const data = await getLaudoById(id);
       setLaudo(data);
     } catch (e) {
@@ -47,12 +50,16 @@ export default function LaudoDetailScreen() {
     }
   }, [id]);
 
-  const handleGeneratePdf = async () => {
+  useEffect(() => {
+    loadLaudo();
+  }, [loadLaudo]);
+
+  const _handleGeneratePdf = async () => {
     if (!laudo) return;
     try {
       setGeneratingPdf(true);
       const pdfUri = await generateAndSavePdf(laudo);
-      setLaudo((prev) => prev ? { ...prev, pdfUri } : prev);
+      setLaudo((prev) => (prev ? { ...prev, pdfUri } : prev));
       Alert.alert('✅ PDF Gerado', 'O PDF foi gerado e salvo no dispositivo.', [
         { text: 'Compartilhar', onPress: () => handleShare() },
         { text: 'OK' },
@@ -88,7 +95,11 @@ export default function LaudoDetailScreen() {
           onPress: async () => {
             if (!laudo) return;
             await deleteLaudo(laudo.id);
-            router.back();
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)');
+            }
           },
         },
       ]
@@ -116,8 +127,8 @@ export default function LaudoDetailScreen() {
   const parecerIcon = GOOD_PARECERES.has(laudo.parecerGeral)
     ? 'checkmark-circle'
     : laudo.parecerGeral === 'CONDENADO'
-    ? 'close-circle'
-    : 'alert-circle';
+      ? 'close-circle'
+      : 'alert-circle';
 
   return (
     <>
@@ -125,8 +136,23 @@ export default function LaudoDetailScreen() {
         options={{
           title: laudo.numeroLaudo,
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 4, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="arrow-back" size={20} color="#f1f5f9" />
+            <TouchableOpacity
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/(tabs)');
+                }
+              }}
+              style={{
+                marginLeft: 4,
+                width: 36,
+                height: 36,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="arrow-back" size={20} color="#1e293b" />
             </TouchableOpacity>
           ),
           headerRight: () => (
@@ -139,7 +165,13 @@ export default function LaudoDetailScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleDelete}
-                style={{ marginRight: 4, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
+                style={{
+                  marginRight: 4,
+                  width: 36,
+                  height: 36,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
                 <Ionicons name="trash-outline" size={20} color="#ef4444" />
               </TouchableOpacity>
@@ -148,17 +180,26 @@ export default function LaudoDetailScreen() {
         }}
       />
 
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(40, insets.bottom + 20) },
+        ]}
+      >
         {/* Resultado Banner */}
-        <View style={[styles.resultBanner, { backgroundColor: resultColor + '1a', borderColor: resultColor }]}>
-          <Ionicons
-            name={parecerIcon}
-            size={28}
-            color={resultColor}
-          />
-          <View style={{flex: 1}}>
+        <View
+          style={[
+            styles.resultBanner,
+            { backgroundColor: resultColor + '1a', borderColor: resultColor },
+          ]}
+        >
+          <Ionicons name={parecerIcon} size={28} color={resultColor} />
+          <View style={{ flex: 1 }}>
             <Text style={[styles.resultLabel, { color: resultColor }]}>{resultLabel}</Text>
-            <Text style={styles.resultSub}>{laudo.numeroLaudo} · {formatDate(laudo.dataEmissao)}</Text>
+            <Text style={styles.resultSub}>
+              {laudo.numeroLaudo} · {formatDate(laudo.dataEmissao)}
+            </Text>
           </View>
         </View>
 
@@ -170,8 +211,21 @@ export default function LaudoDetailScreen() {
         {/* Info Cards */}
         <InfoCard title="👤 Proprietário">
           <InfoRow label="Nome" value={laudo.nomeProprietario} />
-          <InfoRow label="Cidade" value={laudo.cidade || (laudo.cidadeEstado ? laudo.cidadeEstado.split('-')[0].trim() : '-')} />
-          <InfoRow label="Estado (UF)" value={laudo.estado || (laudo.cidadeEstado && laudo.cidadeEstado.includes('-') ? laudo.cidadeEstado.split('-')[1].trim() : '-')} />
+          <InfoRow
+            label="Cidade"
+            value={
+              laudo.cidade || (laudo.cidadeEstado ? laudo.cidadeEstado.split('-')[0].trim() : '-')
+            }
+          />
+          <InfoRow
+            label="Estado (UF)"
+            value={
+              laudo.estado ||
+              (laudo.cidadeEstado && laudo.cidadeEstado.includes('-')
+                ? laudo.cidadeEstado.split('-')[1].trim()
+                : '-')
+            }
+          />
           <InfoRow label="Telefone" value={laudo.telefone} />
           <InfoRow label="Endereço" value={laudo.endereco} />
           <InfoRow label="E-mail" value={laudo.email} />
@@ -209,7 +263,7 @@ export default function LaudoDetailScreen() {
           <View style={styles.divider} />
           <InfoRow label="Conforme Fabricante" value={laudo.parecerConformeFabricante} />
           {laudo.observacoes ? (
-            <View style={{marginTop: 8}}>
+            <View style={{ marginTop: 8 }}>
               <Text style={styles.infoLabel}>Observações:</Text>
               <Text style={styles.obsText}>{laudo.observacoes}</Text>
             </View>
@@ -225,38 +279,41 @@ export default function LaudoDetailScreen() {
         {/* Ações PDF */}
         <View style={styles.actionsRow}>
           <TouchableOpacity
-            style={[styles.actionBtn, styles.pdfBtn]}
-            onPress={handleGeneratePdf}
-            disabled={generatingPdf}
+            style={[styles.actionBtn, styles.viewPdfBtn]}
+            onPress={() => setShowPdfModal(true)}
+            activeOpacity={0.8}
           >
-            {generatingPdf ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="document-text-outline" size={20} color="#fff" />
-            )}
-            <Text style={styles.actionBtnText}>Gerar PDF</Text>
+            <Ionicons name="eye-outline" size={20} color="#0f172a" />
+            <Text style={styles.viewPdfBtnText}>Visualizar PDF</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.actionBtn, styles.shareBtn]}
             onPress={handleShare}
             disabled={generatingPdf}
+            activeOpacity={0.8}
           >
             {generatingPdf ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Ionicons name="share-outline" size={20} color="#fff" />
+              <Ionicons name="share-social-outline" size={20} color="#fff" />
             )}
             <Text style={styles.actionBtnText}>Compartilhar</Text>
           </TouchableOpacity>
         </View>
 
         {laudo.pdfUri && (
-          <Text style={styles.pdfSavedText}>
-            ✅ PDF salvo localmente
-          </Text>
+          <Text style={styles.pdfSavedText}>✅ PDF gerado e pronto no aplicativo</Text>
         )}
       </ScrollView>
+
+      {/* Modal de Visualização Nativa de PDF */}
+      <PdfViewerModal
+        visible={showPdfModal}
+        laudo={laudo}
+        onClose={() => setShowPdfModal(false)}
+        onShare={handleShare}
+      />
     </>
   );
 }
@@ -277,33 +334,100 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={[styles.infoValue, isBad && { color: '#ef4444', fontWeight: '700' }]}>{value}</Text>
+      <Text style={[styles.infoValue, isBad && { color: '#ef4444', fontWeight: '700' }]}>
+        {value}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0e1a' },
+  container: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16, paddingBottom: 40, gap: 14 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0a0e1a' },
-  notFound: { color: '#94a3b8', fontSize: 16 },
-  resultBanner: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 14, borderWidth: 1.5 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' },
+  notFound: { color: '#64748b', fontSize: 16 },
+  resultBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
   resultLabel: { fontSize: 17, fontWeight: '800', letterSpacing: 0.5 },
   resultSub: { color: '#64748b', fontSize: 12, marginTop: 2 },
-  foto: { width: '100%', height: 200, borderRadius: 14, backgroundColor: '#0d1526' },
-  infoCard: { backgroundColor: '#131929', borderRadius: 14, borderWidth: 1, borderColor: '#1e2d45', overflow: 'hidden' },
-  infoCardTitle: { color: '#f1f5f9', fontSize: 13, fontWeight: '700', padding: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#1e2d45', backgroundColor: '#0d1526' },
+  foto: { width: '100%', height: 200, borderRadius: 14, backgroundColor: '#f1f5f9' },
+  infoCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  infoCardTitle: {
+    color: '#1e293b',
+    fontSize: 13,
+    fontWeight: '700',
+    padding: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+  },
   infoCardBody: { padding: 12, gap: 8 },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 2 },
-  infoLabel: { color: '#94a3b8', fontSize: 12, fontWeight: '600', flex: 1.2 },
-  infoValue: { color: '#f1f5f9', fontSize: 12, fontWeight: '500', flex: 1, textAlign: 'right' },
-  divider: { height: 1, backgroundColor: '#1e2d45', marginVertical: 4 },
-  obsText: { color: '#cbd5e1', fontSize: 13, lineHeight: 20, marginTop: 4, backgroundColor: '#0d1526', padding: 10, borderRadius: 8 },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 2,
+  },
+  infoLabel: { color: '#64748b', fontSize: 12, fontWeight: '600', flex: 1.2 },
+  infoValue: { color: '#1e293b', fontSize: 12, fontWeight: '500', flex: 1, textAlign: 'right' },
+  divider: { height: 1, backgroundColor: '#e2e8f0', marginVertical: 4 },
+  obsText: {
+    color: '#475569',
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 4,
+    backgroundColor: '#f1f5f9',
+    padding: 10,
+    borderRadius: 8,
+  },
   parecerText: { fontSize: 14, fontWeight: '700', textAlign: 'center', paddingVertical: 10 },
   actionsRow: { flexDirection: 'row', gap: 12, marginTop: 10 },
-  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12 },
-  pdfBtn: { backgroundColor: '#1e3a5f' },
-  shareBtn: { backgroundColor: '#db2777', shadowColor: '#db2777', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 6 },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  viewPdfBtn: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    shadowColor: '#475569',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  viewPdfBtnText: { color: '#0f172a', fontSize: 14, fontWeight: '700' },
+  shareBtn: {
+    backgroundColor: '#db2777',
+    shadowColor: '#db2777',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
   actionBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   pdfSavedText: { color: '#22c55e', fontSize: 12, textAlign: 'center', fontWeight: '600' },
 });

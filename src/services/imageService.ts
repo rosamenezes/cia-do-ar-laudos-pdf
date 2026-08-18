@@ -55,14 +55,10 @@ export async function pickFromGallery(): Promise<PhotoResult | null> {
 
 async function compressAndSave(uri: string): Promise<PhotoResult> {
   // Comprimir e redimensionar para máximo 1200px
-  const manipulated = await ImageManipulator.manipulateAsync(
-    uri,
-    [{ resize: { width: 1200 } }],
-    {
-      compress: 0.75,
-      format: ImageManipulator.SaveFormat.JPEG,
-    }
-  );
+  const manipulated = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1200 } }], {
+    compress: 0.75,
+    format: ImageManipulator.SaveFormat.JPEG,
+  });
 
   // Salvar na pasta permanente do app
   const dir = FileSystem.documentDirectory + 'fotos/';

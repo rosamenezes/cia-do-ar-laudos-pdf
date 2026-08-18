@@ -1,11 +1,5 @@
-import React, { useRef, useState } from 'react';
-import {
-  View,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Animated,
-} from 'react-native';
+import React, { useState } from 'react';
+import { TextInput, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface SearchBarProps {
@@ -14,9 +8,18 @@ interface SearchBarProps {
   placeholder?: string;
 }
 
-export function SearchBar({ value, onChangeText, placeholder = 'Buscar por nome, modelo, série...' }: SearchBarProps) {
+export function SearchBar({
+  value,
+  onChangeText,
+  placeholder = 'Buscar por nome, modelo, série...',
+}: SearchBarProps) {
   const [focused, setFocused] = useState(false);
-  const borderAnim = useRef(new Animated.Value(0)).current;
+  const [borderAnim] = useState(() => new Animated.Value(0));
+
+  const borderColor = borderAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#e2e8f0', '#db2777'],
+  });
 
   const handleFocus = () => {
     setFocused(true);
@@ -36,17 +39,12 @@ export function SearchBar({ value, onChangeText, placeholder = 'Buscar por nome,
     }).start();
   };
 
-  const borderColor = borderAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#1e2d45', '#db2777'],
-  });
-
   return (
     <Animated.View style={[styles.container, { borderColor }]}>
       <Ionicons
         name="search-outline"
         size={18}
-        color={focused ? '#db2777' : '#475569'}
+        color={focused ? '#db2777' : '#64748b'}
         style={styles.icon}
       />
       <TextInput
@@ -54,7 +52,7 @@ export function SearchBar({ value, onChangeText, placeholder = 'Buscar por nome,
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#334155"
+        placeholderTextColor="#94a3b8"
         onFocus={handleFocus}
         onBlur={handleBlur}
         returnKeyType="search"
@@ -63,7 +61,11 @@ export function SearchBar({ value, onChangeText, placeholder = 'Buscar por nome,
         autoCapitalize="none"
       />
       {value.length > 0 && (
-        <TouchableOpacity onPress={() => onChangeText('')} style={styles.clearBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity
+          onPress={() => onChangeText('')}
+          style={styles.clearBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <Ionicons name="close-circle" size={18} color="#475569" />
         </TouchableOpacity>
       )}
@@ -75,21 +77,27 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0d1526',
-    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
     borderWidth: 1.5,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     marginHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 6,
+    shadowColor: '#475569',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   icon: {
     marginRight: 8,
   },
   input: {
     flex: 1,
-    color: '#f1f5f9',
+    color: '#0f172a',
     fontSize: 14,
+    fontWeight: '500',
     padding: 0,
   },
   clearBtn: {

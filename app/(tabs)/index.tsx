@@ -7,15 +7,19 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Platform,
+  Alert,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LaudoParapente } from '../../src/types/laudo';
-import { getLaudos } from '../../src/services/database';
+import { getLaudos, seedMockLaudos, deleteLaudo } from '../../src/services/database';
 import { LaudoCard } from '../../src/components/LaudoCard';
 import { SearchBar } from '../../src/components/SearchBar';
 
 export default function LaudosScreen() {
+  const insets = useSafeAreaInsets();
   const [laudos, setLaudos] = useState<LaudoParapente[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -43,20 +47,41 @@ export default function LaudosScreen() {
     router.push(`/laudo/${laudo.id}`);
   }, []);
 
+  const handleDeleteLaudo = useCallback((id: string) => {
+    Alert.alert(
+      'Excluir Laudo',
+      'Tem certeza que deseja excluir este laudo? Esta ação não pode ser desfeita.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await deleteLaudo(id);
+              await loadLaudos();
+            } catch (error) {
+              Alert.alert('Erro', 'Não foi possível excluir o laudo.');
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [loadLaudos]);
+
   // Filtragem em memória — instantânea
-  const { filteredLaudos, isFiltering } = useMemo(() => {
+  const filteredLaudos = useMemo(() => {
     const term = searchText.trim().toLowerCase();
-    if (term.length === 0) return { filteredLaudos: laudos, isFiltering: false };
-    return {
-      filteredLaudos: laudos.filter(
-        (l) =>
-          l.nomeProprietario.toLowerCase().includes(term) ||
-          l.numeroLaudo.toLowerCase().includes(term) ||
-          l.fabricaModelo.toLowerCase().includes(term) ||
-          l.numeroSerie.toLowerCase().includes(term)
-      ),
-      isFiltering: true,
-    };
+    if (term.length === 0) return laudos;
+    return laudos.filter(
+      (l) =>
+        l.nomeProprietario.toLowerCase().includes(term) ||
+        l.numeroLaudo.toLowerCase().includes(term) ||
+        l.fabricaModelo.toLowerCase().includes(term) ||
+        l.numeroSerie.toLowerCase().includes(term)
+    );
   }, [laudos, searchText]);
 
   if (loading) {
@@ -71,7 +96,7 @@ export default function LaudosScreen() {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIcon}>
-          <Ionicons name="documents-outline" size={56} color="#1e3a5f" />
+          <Ionicons name="documents-outline" size={56} color="#94a3b8" />
         </View>
         <Text style={styles.emptyTitle}>Nenhum laudo ainda</Text>
         <Text style={styles.emptySubtitle}>
@@ -79,10 +104,14 @@ export default function LaudosScreen() {
         </Text>
         <TouchableOpacity
           style={styles.emptyButton}
-          onPress={() => router.push('/(tabs)/novo')}
+          onPress={async () => {
+            setLoading(true);
+            await seedMockLaudos();
+            await loadLaudos();
+          }}
         >
-          <Ionicons name="add-circle-outline" size={18} color="#fff" />
-          <Text style={styles.emptyButtonText}>Criar Laudo</Text>
+          <Ionicons name="sparkles-outline" size={18} color="#fff" />
+          <Text style={styles.emptyButtonText}>Gerar 5 Laudos de Exemplo</Text>
         </TouchableOpacity>
       </View>
     );
@@ -90,18 +119,6 @@ export default function LaudosScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Barra de estatísticas */}
-      <View style={styles.statsBar}>
-        <Text style={styles.statsText}>
-          {isFiltering
-            ? `${filteredLaudos.length} de ${laudos.length} ${laudos.length === 1 ? 'laudo' : 'laudos'}`
-            : `${laudos.length} ${laudos.length === 1 ? 'laudo' : 'laudos'} registrados`}
-        </Text>
-        <TouchableOpacity onPress={loadLaudos}>
-          <Ionicons name="refresh-outline" size={20} color="#475569" />
-        </TouchableOpacity>
-      </View>
-
       {/* Busca */}
       <View style={styles.searchArea}>
         <SearchBar value={searchText} onChangeText={setSearchText} />
@@ -110,15 +127,12 @@ export default function LaudosScreen() {
       {/* Lista ou estado vazio de busca */}
       {filteredLaudos.length === 0 ? (
         <View style={styles.noResultsContainer}>
-          <Ionicons name="search-outline" size={48} color="#1e2d45" />
+          <Ionicons name="search-outline" size={48} color="#94a3b8" />
           <Text style={styles.noResultsTitle}>Nenhum resultado</Text>
           <Text style={styles.noResultsSubtitle}>
             Tente outro termo ou remova os filtros ativos
           </Text>
-          <TouchableOpacity
-            style={styles.clearFiltersBtn}
-            onPress={() => setSearchText('')}
-          >
+          <TouchableOpacity style={styles.clearFiltersBtn} onPress={() => setSearchText('')}>
             <Text style={styles.clearFiltersBtnText}>Limpar busca</Text>
           </TouchableOpacity>
         </View>
@@ -127,20 +141,33 @@ export default function LaudosScreen() {
           data={filteredLaudos}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <LaudoCard laudo={item} onPress={() => handlePressLaudo(item)} />
-          )}
-          refreshControl={
-            <RefreshControl
-              refreshing={loading}
-              onRefresh={loadLaudos}
-              tintColor="#db2777"
+            <LaudoCard 
+              laudo={item} 
+              onPress={() => handlePressLaudo(item)} 
+              onDelete={handleDeleteLaudo}
             />
+          )}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={loadLaudos} tintColor="#db2777" />
           }
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: Math.max(80, insets.bottom + 80) }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         />
       )}
+
+      {/* Botão Flutuante (FAB - Floating Action Button) */}
+      <TouchableOpacity
+        style={[styles.fab, { bottom: Math.max(20, insets.bottom + 10) }]}
+        onPress={() => router.push('/(tabs)/novo')}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="add" size={28} color="#ffffff" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -148,34 +175,35 @@ export default function LaudosScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0e1a',
+    backgroundColor: '#f8fafc',
   },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0a0e1a',
-  },
-  statsBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e2d45',
-  },
-  statsText: {
-    color: '#64748b',
-    fontSize: 12,
-    fontWeight: '600',
+    backgroundColor: '#f8fafc',
   },
   searchArea: {
     paddingTop: 12,
   },
   list: {
     paddingTop: 4,
-    paddingBottom: 24,
+    paddingBottom: 80,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#db2777',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#db2777',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
   },
   emptyContainer: {
     flex: 1,
@@ -183,19 +211,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 40,
     gap: 14,
-    backgroundColor: '#0a0e1a',
+    backgroundColor: '#f8fafc',
   },
   emptyIcon: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#0d1526',
+    backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
   },
   emptyTitle: {
-    color: '#f1f5f9',
+    color: '#1e293b',
     fontSize: 20,
     fontWeight: '700',
   },
@@ -228,7 +256,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   noResultsTitle: {
-    color: '#f1f5f9',
+    color: '#1e293b',
     fontSize: 18,
     fontWeight: '700',
     marginTop: 8,

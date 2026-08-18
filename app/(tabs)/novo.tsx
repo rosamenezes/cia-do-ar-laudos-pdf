@@ -1,25 +1,23 @@
 import React, { useState, useMemo } from 'react';
-import {
-  View,
-  ScrollView,
-  Alert,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { ScrollView, Alert, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LaudoForm } from '../../src/components/LaudoForm';
 import { LaudoFormData, LaudoParapente } from '../../src/types/laudo';
 import { saveLaudo, generateId, generateNumeroLaudo } from '../../src/services/database';
 
 export default function NovoLaudoScreen() {
   const [isLoading, setIsLoading] = useState(false);
+  const insets = useSafeAreaInsets();
 
   // useMemo garante que o número do laudo não muda se o componente re-renderizar
-  const defaultValues = useMemo(() => ({
-    numeroLaudo: generateNumeroLaudo(),
-    dataEmissao: new Date().toISOString().split('T')[0],
-  }), []);
+  const defaultValues = useMemo(
+    () => ({
+      numeroLaudo: generateNumeroLaudo(),
+      dataEmissao: new Date().toISOString().split('T')[0],
+    }),
+    []
+  );
 
   const handleSubmit = async (data: LaudoFormData) => {
     try {
@@ -35,20 +33,16 @@ export default function NovoLaudoScreen() {
 
       await saveLaudo(laudo);
 
-      Alert.alert(
-        '✅ Laudo Salvo',
-        `O laudo ${laudo.numeroLaudo} foi salvo com sucesso!`,
-        [
-          {
-            text: 'Ver Laudo',
-            onPress: () => router.replace(`/laudo/${laudo.id}`),
-          },
-          {
-            text: 'Novo Laudo',
-            onPress: () => router.replace('/(tabs)/novo'),
-          },
-        ]
-      );
+      Alert.alert('✅ Laudo Salvo', `O laudo ${laudo.numeroLaudo} foi salvo com sucesso!`, [
+        {
+          text: 'Ver Laudo',
+          onPress: () => router.replace(`/laudo/${laudo.id}`),
+        },
+        {
+          text: 'Novo Laudo',
+          onPress: () => router.replace('/(tabs)/novo'),
+        },
+      ]);
     } catch (e: any) {
       Alert.alert('Erro', e.message ?? 'Não foi possível salvar o laudo');
     } finally {
@@ -63,15 +57,14 @@ export default function NovoLaudoScreen() {
     >
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(40, insets.bottom + 20) },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <LaudoForm
-          defaultValues={defaultValues}
-          onSubmit={handleSubmit}
-          isLoading={isLoading}
-        />
+        <LaudoForm defaultValues={defaultValues} onSubmit={handleSubmit} isLoading={isLoading} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -80,7 +73,7 @@ export default function NovoLaudoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0e1a',
+    backgroundColor: '#f8fafc',
   },
   scroll: {
     flex: 1,

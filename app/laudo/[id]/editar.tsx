@@ -10,25 +10,30 @@ import {
   Text,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LaudoParapente, LaudoFormData } from '../../../src/types/laudo';
 import { getLaudoById, saveLaudo } from '../../../src/services/database';
 import { LaudoForm } from '../../../src/components/LaudoForm';
 
 export default function EditarLaudoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const [laudo, setLaudo] = useState<LaudoParapente | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const loadLaudo = useCallback(async () => {
     try {
-      setLoading(true);
       const data = await getLaudoById(id);
       setLaudo(data);
     } catch (e) {
       console.error('Erro ao carregar laudo para edição:', e);
       Alert.alert('Erro', 'Não foi possível carregar o laudo.');
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
     } finally {
       setLoading(false);
     }
@@ -45,11 +50,11 @@ export default function EditarLaudoScreen() {
 
       const laudoAtualizado: LaudoParapente = {
         ...data,
-        id: laudo.id,                          // mantém o mesmo ID
-        numeroLaudo: laudo.numeroLaudo,        // número não muda
-        criadoEm: laudo.criadoEm,             // data de criação não muda
+        id: laudo.id, // mantém o mesmo ID
+        numeroLaudo: laudo.numeroLaudo, // número não muda
+        criadoEm: laudo.criadoEm, // data de criação não muda
         atualizadoEm: new Date().toISOString(), // atualiza timestamp
-        pdfUri: laudo.pdfUri,                 // preserva PDF anterior se houver
+        pdfUri: laudo.pdfUri, // preserva PDF anterior se houver
       };
 
       await saveLaudo(laudoAtualizado); // INSERT OR REPLACE atualiza o registro
@@ -57,7 +62,18 @@ export default function EditarLaudoScreen() {
       Alert.alert(
         '✅ Laudo Atualizado',
         `As alterações no laudo ${laudo.numeroLaudo} foram salvas com sucesso.`,
-        [{ text: 'OK', onPress: () => router.back() }]
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)');
+              }
+            },
+          },
+        ]
       );
     } catch (e: any) {
       Alert.alert('Erro', e.message ?? 'Não foi possível salvar as alterações.');
@@ -91,7 +107,10 @@ export default function EditarLaudoScreen() {
       >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: Math.max(40, insets.bottom + 20) },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -110,7 +129,7 @@ export default function EditarLaudoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0e1a',
+    backgroundColor: '#f8fafc',
   },
   scroll: {
     flex: 1,
@@ -123,10 +142,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0a0e1a',
+    backgroundColor: '#f8fafc',
   },
   errorText: {
-    color: '#94a3b8',
+    color: '#64748b',
     fontSize: 16,
   },
 });

@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { pickFromCamera, pickFromGallery } from '../services/imageService';
 
@@ -55,12 +48,20 @@ export function PhotoCapture({ photoUri, onPhotoSelected, onPhotoRemoved }: Phot
               <Text style={styles.photoBtnText}>Câmera</Text>
             </TouchableOpacity>
             {/* Trocar via galeria */}
-            <TouchableOpacity style={[styles.photoBtn, styles.galleryBtn]} onPress={handleGallery} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={[styles.photoBtn, styles.galleryBtn]}
+              onPress={handleGallery}
+              activeOpacity={0.8}
+            >
               <Ionicons name="images" size={16} color="#fff" />
               <Text style={styles.photoBtnText}>Galeria</Text>
             </TouchableOpacity>
             {/* Remover */}
-            <TouchableOpacity style={[styles.photoBtn, styles.removeBtn]} onPress={handleRemove} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={[styles.photoBtn, styles.removeBtn]}
+              onPress={handleRemove}
+              activeOpacity={0.8}
+            >
               <Ionicons name="trash" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -106,11 +107,11 @@ export function PhotoCapture({ photoUri, onPhotoSelected, onPhotoRemoved }: Phot
 const styles = StyleSheet.create({
   /* ── Estado vazio ── */
   emptyContainer: {
-    backgroundColor: '#0d1526',
+    backgroundColor: '#f1f5f9',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#1e3a5f',
-    borderStyle: 'dashed',
+    borderColor: '#e2e8f0',
+    borderStyle: 'solid',
     alignItems: 'center',
     paddingTop: 22,
     paddingBottom: 16,
@@ -120,20 +121,20 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#1e1030',
+    backgroundColor: '#fce7f3',
     borderWidth: 1.5,
-    borderColor: '#db277733',
+    borderColor: '#fbcfe8',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
   emptyTitle: {
-    color: '#e2e8f0',
+    color: '#1e293b',
     fontSize: 14,
     fontWeight: '700',
   },
   emptySubtitle: {
-    color: '#475569',
+    color: '#64748b',
     fontSize: 12,
     marginBottom: 12,
   },
@@ -146,12 +147,12 @@ const styles = StyleSheet.create({
   actionBtn: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#111827',
+    backgroundColor: '#ffffff',
     borderRadius: 10,
     paddingVertical: 14,
     gap: 4,
     borderWidth: 1,
-    borderColor: '#1e2d45',
+    borderColor: '#e2e8f0',
   },
   actionBtnText: {
     color: '#db2777',
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   actionBtnSub: {
-    color: '#475569',
+    color: '#94a3b8',
     fontSize: 10,
   },
   actionDivider: {

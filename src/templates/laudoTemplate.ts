@@ -1,5 +1,6 @@
 import { LaudoParapente } from '../types/laudo';
 import { PARECER_GERAL_LABELS, PARECER_GERAL_COLORS } from '../types/constants';
+import { LOGO_BASE64 } from './logoAsset';
 import { imageToBase64 } from '../services/imageService';
 
 export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> {
@@ -14,14 +15,15 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
 
   const resultColor = PARECER_GERAL_COLORS[laudo.parecerGeral] ?? '#374151';
   const resultLabel = PARECER_GERAL_LABELS[laudo.parecerGeral];
-  const resultIcon = {
-    OTIMO: '✅',
-    MUITO_BOM: '✅',
-    USADO_BOM_ESTADO: '🟡',
-    USADO_RAZOAVEL: '⚠️',
-    MUITO_USADO: '🔶',
-    CONDENADO: '🚫',
-  }[laudo.parecerGeral] ?? '📋';
+  const resultIcon =
+    {
+      OTIMO: '✅',
+      MUITO_BOM: '✅',
+      USADO_BOM_ESTADO: '🟡',
+      USADO_RAZOAVEL: '⚠️',
+      MUITO_USADO: '🔶',
+      CONDENADO: '🚫',
+    }[laudo.parecerGeral] ?? '📋';
 
   const formatDate = (val: string) => {
     try {
@@ -47,13 +49,8 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
   };
 
   const logoWatermarkHtml = `
-    <div style="text-align:center; line-height:1;">
-      <svg width="900" height="115" viewBox="0 0 240 30" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 18px;">
-        <path d="M 10 28 C 60 2, 180 2, 230 28 C 175 14, 65 14, 10 28 Z" fill="#e5007d" />
-      </svg>
-      <div style="font-family:'Arial Black',Arial,sans-serif; font-size:160px; font-weight:900; color:#1b2a6b; letter-spacing:-3px;">
-        <span style="font-style:italic;">Cia.</span> do Ar
-      </div>
+    <div class="global-watermark">
+      <img src="${LOGO_BASE64}" style="width: 680px; max-width: 95%; height: auto; display: block; margin: 0 auto;" />
     </div>
   `;
 
@@ -79,7 +76,7 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
 
     @page {
       size: A4 portrait;
-      margin: 5mm;
+      margin: 2mm;
     }
 
     .pdf-page {
@@ -87,24 +84,35 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       width: 100%;
       max-width: 210mm;
       margin: 0 auto;
-      padding: 8mm 16mm;
+      padding: 5mm 10mm 15mm 10mm;
       box-sizing: border-box;
+      min-height: 292mm;
       page-break-after: always;
-      overflow: hidden;
+      break-after: page;
     }
-
-    .pdf-page:last-of-type {
+    
+    .last-page {
       page-break-after: auto;
+      break-after: auto;
     }
 
-    /* MARCA D'ÁGUA INDIVIDUAL POR PÁGINA */
-    .page-watermark {
+    /* SELO DE QUALIDADE PREMIUM */
+    .selo-qualidade {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 5;
+    }
+
+    /* MARCA D'ÁGUA GLOBAL */
+    .global-watermark {
       position: absolute;
       top: 50%;
       left: 50%;
-      transform: translate(-50%, -50%) rotate(-35deg);
-      width: 1400px;
-      opacity: 0.05;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      max-width: 700px;
+      opacity: 0.12;
       z-index: 0;
       pointer-events: none;
     }
@@ -177,7 +185,6 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       text-transform: uppercase;
       letter-spacing: 0.6px;
       border-left: 5px solid #db2777;
-      box-shadow: 2px 2px 6px rgba(0,0,0,0.12);
     }
 
     /* TABLES */
@@ -214,30 +221,31 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
 
     /* FOTO MOLDURA */
     .foto-card {
-      margin-top: 15px;
-      margin-bottom: 10px;
-      border: 1px solid #cbd5e1;
+      margin-top: 10px;
+      border: 1px solid #e2e8f0;
       border-radius: 8px;
       overflow: hidden;
-      background: #f8fafc;
+      background: #ffffff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
     }
     .foto-header {
-      background-color: #f1f5f9;
-      color: #475569;
-      font-size: 9px;
+      background: #f8fafc;
+      padding: 4px 10px;
       font-weight: 700;
-      padding: 5px 10px;
+      font-size: 9px;
+      color: #475569;
       border-bottom: 1px solid #e2e8f0;
+      text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     .foto-body {
-      padding: 10px;
+      padding: 6px;
       text-align: center;
       background: #ffffff;
     }
     .foto-body img {
-      max-width: 100%;
-      max-height: 220px;
+      max-width: 90%;
+      max-height: 250px;
       width: auto;
       height: auto;
       object-fit: contain;
@@ -248,11 +256,11 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
 
     /* RESULTADO */
     .resultado-banner {
-      margin-top: 20px;
+      margin-top: 12px;
       background: linear-gradient(135deg, ${resultColor}15 0%, ${resultColor}08 100%);
       border: 2px solid ${resultColor};
       border-radius: 12px;
-      padding: 20px 15px;
+      padding: 16px 20px;
       text-align: center;
       position: relative;
       overflow: hidden;
@@ -261,71 +269,73 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
-      height: 4px;
+      height: 3px;
       background: linear-gradient(90deg, #db2777, ${resultColor});
     }
     .resultado-icon {
       font-size: 48px;
       line-height: 1;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       display: block;
     }
     .resultado-title {
-      font-size: 10px;
+      font-size: 13px;
       color: #64748b;
       text-transform: uppercase;
       font-weight: 700;
       letter-spacing: 1px;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
     .resultado-value {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 900;
       color: ${resultColor};
       letter-spacing: -0.5px;
     }
 
     .observacoes {
-      margin-top: 15px;
-      padding: 12px;
+      margin-top: 8px;
+      padding: 8px 12px;
       background: #f1f5f9;
       border-radius: 6px;
-      font-size: 11px;
+      font-size: 10px;
       color: #334155;
     }
 
-    /* FOOTER */
-    .footer {
-      position: fixed;
-      bottom: 8mm;
-      left: 16mm;
-      right: 16mm;
-      padding-top: 10px;
+    /* BOTTOM SECTION */
+    .fixed-bottom-section {
+      margin-top: 14px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .footer-text {
+      padding-top: 8px;
+      margin-top: 10px;
       border-top: 1px solid #e2e8f0;
       text-align: center;
       font-size: 9px;
       color: #94a3b8;
-      z-index: 10;
     }
   </style>
 </head>
 <body>
 
-  <!-- PÁGINA 1 -->
+  <!-- ════════════════════════════════════════
+       PÁGINA 1 — Dados + Identificação + Foto
+       ════════════════════════════════════════ -->
   <div class="pdf-page">
-    <div class="page-watermark">${logoWatermarkHtml}</div>
+    <!-- MARCA D'ÁGUA INDIVIDUAL DA PÁGINA -->
+    <div class="global-watermark">
+      <img src="${LOGO_BASE64}" style="width: 100%; height: auto; display: block;" />
+    </div>
+
     <div class="page-content">
-      
+
       <!-- HEADER -->
       <div class="header">
         <div class="brand-section">
-          <svg width="180" height="62" viewBox="0 0 240 80" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: block; margin-bottom: 4px;">
-            <path d="M 25 32 C 70 5, 180 5, 215 32 C 175 16, 70 16, 25 32 Z" fill="#e5007d" />
-            <text x="120" y="68" font-family="'Inter', 'Arial Black', sans-serif" text-anchor="middle">
-              <tspan font-weight="900" font-style="italic" font-size="36" fill="#1b2a6b">Cia.</tspan>
-              <tspan font-weight="800" font-style="normal" font-size="36" fill="#1b2a6b"> do Ar</tspan>
-            </text>
-          </svg>
+          <img src="${LOGO_BASE64}" style="max-height: 100px; width: auto; display: block; margin-bottom: 6px;" />
           <h2>LAUDO DE REVISÃO DE PARAPENTE</h2>
         </div>
         <div class="contact-section">
@@ -336,63 +346,60 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       </div>
 
       <!-- PROPRIETÁRIO -->
-      <div class="keep-together">
-        <div class="section-title">👤 Dados do Proprietário</div>
-        <table>
-          <tr>
-            <th>Nome</th>
-            <td colspan="3">${laudo.nomeProprietario}</td>
-          </tr>
-          <tr>
-            <th>Data da Revisão</th>
-            <td>${formatDate(laudo.dataEmissao)}</td>
-            <th>Telefone</th>
-            <td>${laudo.telefone}</td>
-          </tr>
-          <tr>
-            <th>Cidade</th>
-            <td>${laudo.cidade || (laudo.cidadeEstado ? laudo.cidadeEstado.split('-')[0].trim() : '-')}</td>
-            <th>Estado (UF)</th>
-            <td>${laudo.estado || (laudo.cidadeEstado && laudo.cidadeEstado.includes('-') ? laudo.cidadeEstado.split('-')[1].trim() : '-')}</td>
-          </tr>
-          <tr>
-            <th>Endereço</th>
-            <td>${laudo.endereco}</td>
-            <th>Email</th>
-            <td>${laudo.email}</td>
-          </tr>
-        </table>
-      </div>
+      <div class="section-title">👤 Dados do Proprietário</div>
+      <table>
+        <tr>
+          <th>Nome</th>
+          <td colspan="3">${laudo.nomeProprietario}</td>
+        </tr>
+        <tr>
+          <th>Data da Revisão</th>
+          <td>${formatDate(laudo.dataEmissao)}</td>
+          <th>Telefone</th>
+          <td>${laudo.telefone}</td>
+        </tr>
+        <tr>
+          <th>Cidade</th>
+          <td>${laudo.cidade || (laudo.cidadeEstado ? laudo.cidadeEstado.split('-')[0].trim() : '-')}</td>
+          <th>Estado (UF)</th>
+          <td>${laudo.estado || (laudo.cidadeEstado && laudo.cidadeEstado.includes('-') ? laudo.cidadeEstado.split('-')[1].trim() : '-')}</td>
+        </tr>
+        <tr>
+          <th>Endereço</th>
+          <td>${laudo.endereco}</td>
+          <th>Email</th>
+          <td>${laudo.email}</td>
+        </tr>
+      </table>
 
       <!-- VELA -->
-      <div class="keep-together">
-        <div class="section-title">🪂 Identificação da Vela</div>
-        <table>
-          <tr>
-            <th>Fábrica / Modelo</th>
-            <td colspan="3">${laudo.fabricaModelo}</td>
-          </tr>
-          <tr>
-            <th>Nº de Série</th>
-            <td>${laudo.numeroSerie}</td>
-            <th>Data de Fabricação</th>
-            <td>${laudo.dataFabricacao}</td>
-          </tr>
-          <tr>
-            <th>Cor Bordo de Ataque</th>
-            <td>${laudo.corBordoAtaque}</td>
-            <th>Cor Intradorso</th>
-            <td>${laudo.corIntradorso}</td>
-          </tr>
-          <tr>
-            <th>Cor Extradorso</th>
-            <td colspan="3">${laudo.corExtradorso}</td>
-          </tr>
-        </table>
-      </div>
+      <div class="section-title">🪂 Identificação da Vela</div>
+      <table>
+        <tr>
+          <th>Fábrica / Modelo</th>
+          <td colspan="3"><strong>${laudo.fabricaModelo}</strong></td>
+        </tr>
+        <tr>
+          <th>Nº de Série</th>
+          <td>${laudo.numeroSerie}</td>
+          <th>Data de Fabricação</th>
+          <td>${laudo.dataFabricacao}</td>
+        </tr>
+        <tr>
+          <th>Cor Bordo de Ataque</th>
+          <td>${laudo.corBordoAtaque}</td>
+          <th>Cor Intradorso</th>
+          <td>${laudo.corIntradorso}</td>
+        </tr>
+        <tr>
+          <th>Cor Extradorso</th>
+          <td colspan="3">${laudo.corExtradorso}</td>
+        </tr>
+      </table>
 
+      <!-- FOTO -->
       ${fotoBase64 ? `
-      <div class="foto-card keep-together">
+      <div class="foto-card">
         <div class="foto-header">📷 REGISTRO FOTOGRÁFICO DO EQUIPAMENTO</div>
         <div class="foto-body">
           <img src="${fotoBase64}" alt="Foto da vela" />
@@ -403,103 +410,140 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
     </div>
   </div>
 
-  <!-- PÁGINA 2 -->
+  <!-- ════════════════════════════════════════
+       PÁGINA 2 — Checagem de Linhas e Tecido
+       ════════════════════════════════════════ -->
   <div class="pdf-page">
-    <div class="page-watermark">${logoWatermarkHtml}</div>
+    <!-- MARCA D'ÁGUA INDIVIDUAL DA PÁGINA -->
+    <div class="global-watermark">
+      <img src="${LOGO_BASE64}" style="width: 100%; height: auto; display: block;" />
+    </div>
+
     <div class="page-content">
 
-      <!-- LINHAS -->
-      <div class="keep-together" style="margin-top: 15px;">
-        <div class="section-title">🧵 Checagem de Linhas</div>
-        <table>
-          <tr><th>Tirantes</th><td>
-            ${renderStatusBadge(laudo.linhasTirantes)}
-            ${renderObs(laudo.linhasTirantesObs)}
-          </td></tr>
-          <tr><th>Batoques e Argolas</th><td>
-            ${renderStatusBadge(laudo.linhasBatoquesArgolas)}
-            ${renderObs(laudo.linhasBatoquesArgolasObs)}
-          </td></tr>
-          <tr><th>Roldanas</th><td>
-            ${renderStatusBadge(laudo.linhasRoldanas)}
-            ${renderObs(laudo.linhasRoldanasObs)}
-          </td></tr>
-          <tr><th>Distorcedor</th><td>
-            ${renderStatusBadge(laudo.linhasDistorcedor)}
-            ${renderObs(laudo.linhasDistorcedorObs)}
-          </td></tr>
-          <tr><th>Carga nas Linhas</th><td>
-            ${renderStatusBadge(laudo.linhasCarga)}
-            ${renderObs(laudo.linhasCargaObs)}
-          </td></tr>
-          <tr><th>Troca de Linhas</th><td>
-            ${renderStatusBadge(laudo.linhasTroca)}
-            ${renderObs(laudo.linhasTrocaObs)}
-          </td></tr>
-          <tr><th>Simetria e Trimagem</th><td>
-            ${renderStatusBadge(laudo.linhasSimetriaTrimagem)}
-            ${renderObs(laudo.linhasSimetriaTrimagemObs)}
-          </td></tr>
-        </table>
+      <!-- Subheader -->
+      <div class="page-subheader">
+        <span class="page-subheader-title">Checagem Técnica</span>
+        <span class="page-subheader-info">Laudo Nº ${laudo.numeroLaudo} • ${laudo.nomeProprietario}</span>
       </div>
+
+      <!-- LINHAS -->
+      <div class="section-title">🧵 Checagem de Linhas</div>
+      <table>
+        <tr><th>Tirantes</th><td>
+          ${renderStatusBadge(laudo.linhasTirantes)}
+          ${renderObs(laudo.linhasTirantesObs)}
+        </td></tr>
+        <tr><th>Batoques e Argolas</th><td>
+          ${renderStatusBadge(laudo.linhasBatoquesArgolas)}
+          ${renderObs(laudo.linhasBatoquesArgolasObs)}
+        </td></tr>
+        <tr><th>Roldanas</th><td>
+          ${renderStatusBadge(laudo.linhasRoldanas)}
+          ${renderObs(laudo.linhasRoldanasObs)}
+        </td></tr>
+        <tr><th>Distorcedor</th><td>
+          ${renderStatusBadge(laudo.linhasDistorcedor)}
+          ${renderObs(laudo.linhasDistorcedorObs)}
+        </td></tr>
+        <tr><th>Carga nas Linhas</th><td>
+          ${renderStatusBadge(laudo.linhasCarga)}
+          ${renderObs(laudo.linhasCargaObs)}
+        </td></tr>
+        <tr><th>Troca de Linhas</th><td>
+          ${renderStatusBadge(laudo.linhasTroca)}
+          ${renderObs(laudo.linhasTrocaObs)}
+        </td></tr>
+        <tr><th>Simetria</th><td>
+          ${renderStatusBadge(laudo.linhasSimetria)}
+          ${renderObs(laudo.linhasSimetriaObs)}
+        </td></tr>
+        <tr><th>Trimagem</th><td>
+          ${renderStatusBadge(laudo.linhasTrimagem)}
+          ${renderObs(laudo.linhasTrimagemObs)}
+        </td></tr>
+      </table>
 
       <!-- TECIDO -->
-      <div class="keep-together" style="margin-top: 15px;">
-        <div class="section-title">🛡️ Checagem do Tecido</div>
-        <table>
-          <tr><th>Check do Perfil</th><td>
-            ${renderStatusBadge(laudo.tecidoCheckPerfil)}
-            ${renderObs(laudo.tecidoCheckPerfilObs)}
-          </td></tr>
-          <tr><th>Check do Intradorso</th><td>
-            ${renderStatusBadge(laudo.tecidoCheckIntradorso)}
-            ${renderObs(laudo.tecidoCheckIntradorsoObs)}
-          </td></tr>
-          <tr><th>Check do Bordo Ataque</th><td>
-            ${renderStatusBadge(laudo.tecidoCheckBordoAtaque)}
-            ${renderObs(laudo.tecidoCheckBordoAtaqueObs)}
-          </td></tr>
-          <tr><th>Check do Extradorso</th><td>
-            ${renderStatusBadge(laudo.tecidoCheckExtradorso)}
-            ${renderObs(laudo.tecidoCheckExtradorsoObs)}
-          </td></tr>
-          <tr><th>Teste de Resistência</th><td>
-            ${renderStatusBadge(laudo.tecidoTesteResistencia)}
-          </td></tr>
-          <tr><th>Porosidade Bordo Ataque</th><td>
-            ${renderStatusBadge(laudo.tecidoPorosidadeBordoAtaque)}
-          </td></tr>
-          <tr><th>Porosidade Intradorso</th><td>
-            ${renderStatusBadge(laudo.tecidoPorosidadeIntradorso)}
-          </td></tr>
-          <tr><th>Porosidade Extradorso</th><td>
-            ${renderStatusBadge(laudo.tecidoPorosidadeExtradorso)}
-          </td></tr>
-        </table>
+      <div class="section-title">🛡️ Checagem do Tecido</div>
+      <table>
+        <tr><th>Check do Perfil</th><td>
+          ${renderStatusBadge(laudo.tecidoCheckPerfil)}
+          ${renderObs(laudo.tecidoCheckPerfilObs)}
+        </td></tr>
+        <tr><th>Check do Intradorso</th><td>
+          ${renderStatusBadge(laudo.tecidoCheckIntradorso)}
+          ${renderObs(laudo.tecidoCheckIntradorsoObs)}
+        </td></tr>
+        <tr><th>Check do Bordo Ataque</th><td>
+          ${renderStatusBadge(laudo.tecidoCheckBordoAtaque)}
+          ${renderObs(laudo.tecidoCheckBordoAtaqueObs)}
+        </td></tr>
+        <tr><th>Check do Extradorso</th><td>
+          ${renderStatusBadge(laudo.tecidoCheckExtradorso)}
+          ${renderObs(laudo.tecidoCheckExtradorsoObs)}
+        </td></tr>
+        <tr><th>Teste de Resistência</th><td>
+          ${renderStatusBadge(laudo.tecidoTesteResistencia)}
+        </td></tr>
+        <tr><th>Porosidade Bordo Ataque</th><td>
+          ${renderStatusBadge(laudo.tecidoPorosidadeBordoAtaque)}
+        </td></tr>
+        <tr><th>Porosidade Extradorso</th><td>
+          ${renderStatusBadge(laudo.tecidoPorosidadeExtradorso)}
+        </td></tr>
+      </table>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       PÁGINA 3 — Parecer Geral + Rodapé
+       ════════════════════════════════════════ -->
+  <div class="pdf-page last-page">
+    <!-- MARCA D'ÁGUA INDIVIDUAL DA PÁGINA -->
+    <div class="global-watermark">
+      <img src="${LOGO_BASE64}" style="width: 100%; height: auto; display: block;" />
+    </div>
+
+    <div class="page-content">
+
+      <!-- Subheader -->
+      <div class="page-subheader">
+        <span class="page-subheader-title">Parecer Final</span>
+        <span class="page-subheader-info">Laudo Nº ${laudo.numeroLaudo} • ${laudo.nomeProprietario}</span>
       </div>
 
-      <!-- RESULTADO E PARECER -->
-      <div class="keep-together">
-        <div class="resultado-banner">
-          <span class="resultado-icon">${resultIcon}</span>
-          <div class="resultado-title">Parecer Geral da Vela</div>
-          <div class="resultado-value">${resultLabel}</div>
+      <!-- PARECER GERAL -->
+      <div class="resultado-banner">
+        <div class="selo-qualidade">
+          <svg width="234" height="54" viewBox="0 0 180 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0.5" y="0.5" width="179" height="41" rx="4" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+            <circle cx="21" cy="21" r="11" fill="#ecfdf5"/>
+            <path d="M 16 21 L 19 24 L 26 17" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="42" y="18" font-family="'Inter', sans-serif" font-size="9" font-weight="700" fill="#1e293b" letter-spacing="0.2px">INSPEÇÃO CERTIFICADA</text>
+            <text x="42" y="29" font-family="'Inter', sans-serif" font-size="7" font-weight="500" fill="#64748b">Cia. do Ar • Padrão de Qualidade</text>
+          </svg>
         </div>
+        <span class="resultado-icon">${resultIcon}</span>
+        <div class="resultado-title">Parecer Geral da Vela</div>
+        <div class="resultado-value">${resultLabel}</div>
+      </div>
 
-        ${laudo.observacoes ? `
-        <div class="observacoes">
-          <strong>Observações Adicionais:</strong><br/>
-          ${laudo.observacoes}
-        </div>
-        ` : ''}
+      ${laudo.observacoes ? `
+      <div class="observacoes">
+        <strong>Observações Adicionais:</strong><br/>
+        ${laudo.observacoes}
+      </div>
+      ` : ''}
+
+      <div class="footer-text">
+        Documento gerado digitalmente em ${formatDate(laudo.dataEmissao)} | Cia. do Ar
       </div>
 
     </div>
   </div>
 
-  <div class="footer">
-    Documento gerado digitalmente em ${formatDate(laudo.dataEmissao)} | Cia. do Ar
-  </div>
 </body>
 </html>
   `;

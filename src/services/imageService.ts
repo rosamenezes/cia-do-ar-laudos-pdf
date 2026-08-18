@@ -1,15 +1,17 @@
+import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
 
 export interface PhotoResult {
-  uri: string;
-  base64?: string;
+  uri: string; // Base64 string agora
   width: number;
   height: number;
 }
 
 export async function requestPermissions(): Promise<boolean> {
+  if (Platform.OS === 'web') return true;
+  
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') return false;
 
@@ -18,9 +20,9 @@ export async function requestPermissions(): Promise<boolean> {
 }
 
 export async function pickFromCamera(): Promise<PhotoResult | null> {
-  const { status } = await ImagePicker.requestCameraPermissionsAsync();
-  if (status !== 'granted') {
-    throw new Error('Permissão de câmera negada');
+  if (Platform.OS !== 'web') {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') throw new Error('Permissão de câmera negada');
   }
 
   const result = await ImagePicker.launchCameraAsync({
@@ -32,13 +34,13 @@ export async function pickFromCamera(): Promise<PhotoResult | null> {
 
   if (result.canceled || !result.assets[0]) return null;
 
-  return await compressAndSave(result.assets[0].uri);
+  return await compressAndEncodeBase64(result.assets[0].uri);
 }
 
 export async function pickFromGallery(): Promise<PhotoResult | null> {
-  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (status !== 'granted') {
-    throw new Error('Permissão de galeria negada');
+  if (Platform.OS !== 'web') {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') throw new Error('Permissão de galeria negada');
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -50,35 +52,55 @@ export async function pickFromGallery(): Promise<PhotoResult | null> {
 
   if (result.canceled || !result.assets[0]) return null;
 
-  return await compressAndSave(result.assets[0].uri);
+  return await compressAndEncodeBase64(result.assets[0].uri);
 }
 
-async function compressAndSave(uri: string): Promise<PhotoResult> {
-  // Comprimir e redimensionar para máximo 1200px
-  const manipulated = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1200 } }], {
-    compress: 0.75,
-    format: ImageManipulator.SaveFormat.JPEG,
-  });
+async function compressAndEncodeBase64(uri: string): Promise<PhotoResult> {
+  let finalUri = uri;
+  let width = 800;
+  let height = 600;
 
-  // Salvar na pasta permanente do app
-  const dir = FileSystem.documentDirectory + 'fotos/';
-  await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+  if (Platform.OS !== 'web') {
+    const manipulated = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 800 } }], {
+      compress: 0.5, // 50% para poupar espaço no banco
+      format: ImageManipulator.SaveFormat.JPEG,
+    });
+    finalUri = manipulated.uri;
+    width = manipulated.width;
+    height = manipulated.height;
+  }
 
-  const filename = `foto_${Date.now()}.jpg`;
-  const dest = dir + filename;
+  try {
+    let base64String = '';
 
-  await FileSystem.copyAsync({ from: manipulated.uri, to: dest });
+    if (Platform.OS === 'web') {
+      const response = await fetch(finalUri);
+      const blob = await response.blob();
+      base64String = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } else {
+      const b64 = await FileSystem.readAsStringAsync(finalUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      base64String = `data:image/jpeg;base64,${b64}`;
+    }
 
-  return {
-    uri: dest,
-    width: manipulated.width,
-    height: manipulated.height,
-  };
+    return {
+      uri: base64String,
+      width,
+      height,
+    };
+  } catch (error) {
+    console.error("Erro ao converter imagem para Base64:", error);
+    throw new Error("Falha ao processar a imagem.");
+  }
 }
 
 export async function imageToBase64(uri: string): Promise<string> {
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  return `data:image/jpeg;base64,${base64}`;
+  // A uri já contém o próprio Base64 agora
+  return uri;
 }

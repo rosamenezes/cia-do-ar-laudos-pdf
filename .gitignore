@@ -14,3 +14,6 @@ yarn-error.log
 # Pastas nativas (ignoradas no fluxo gerenciado)
 ios/
 android/
+
+# Variaveis de ambiente
+.env*

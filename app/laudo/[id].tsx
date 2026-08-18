@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -76,14 +77,34 @@ export default function LaudoDetailScreen() {
     try {
       setGeneratingPdf(true);
       await generateAndShare(laudo);
+      if (Platform.OS === 'web') {
+        window.alert('Documento processado para impressão/salvamento com sucesso!');
+      }
     } catch (e: any) {
-      Alert.alert('Erro', e.message ?? 'Não foi possível compartilhar o laudo');
+      if (Platform.OS === 'web') {
+        window.alert('Erro ao imprimir: ' + (e.message ?? ''));
+      } else {
+        Alert.alert('Erro', e.message ?? 'Não foi possível compartilhar o laudo');
+      }
     } finally {
       setGeneratingPdf(false);
     }
   };
 
   const handleDelete = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Deseja excluir o laudo ${laudo?.numeroLaudo}? Esta ação não pode ser desfeita.`)) {
+        deleteLaudo(laudo!.id).then(() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)');
+          }
+        });
+      }
+      return;
+    }
+
     Alert.alert(
       'Excluir Laudo',
       `Deseja excluir o laudo ${laudo?.numeroLaudo}? Esta ação não pode ser desfeita.`,
@@ -278,14 +299,16 @@ export default function LaudoDetailScreen() {
 
         {/* Ações PDF */}
         <View style={styles.actionsRow}>
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.viewPdfBtn]}
-            onPress={() => setShowPdfModal(true)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="eye-outline" size={20} color="#0f172a" />
-            <Text style={styles.viewPdfBtnText}>Visualizar PDF</Text>
-          </TouchableOpacity>
+          {Platform.OS !== 'web' && (
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.viewPdfBtn]}
+              onPress={() => setShowPdfModal(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="eye-outline" size={20} color="#0f172a" />
+              <Text style={styles.viewPdfBtnText}>Visualizar PDF</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.actionBtn, styles.shareBtn]}
@@ -296,24 +319,28 @@ export default function LaudoDetailScreen() {
             {generatingPdf ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Ionicons name="share-social-outline" size={20} color="#fff" />
+              <Ionicons name={Platform.OS === 'web' ? 'print-outline' : 'share-social-outline'} size={20} color="#fff" />
             )}
-            <Text style={styles.actionBtnText}>Compartilhar</Text>
+            <Text style={styles.actionBtnText}>
+              {Platform.OS === 'web' ? 'Imprimir / Salvar PDF' : 'Compartilhar'}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {laudo.pdfUri && (
+        {laudo.pdfUri && Platform.OS !== 'web' && (
           <Text style={styles.pdfSavedText}>✅ PDF gerado e pronto no aplicativo</Text>
         )}
       </ScrollView>
 
-      {/* Modal de Visualização Nativa de PDF */}
-      <PdfViewerModal
-        visible={showPdfModal}
-        laudo={laudo}
-        onClose={() => setShowPdfModal(false)}
-        onShare={handleShare}
-      />
+      {/* Modal de Visualização Nativa de PDF apenas em celulares */}
+      {Platform.OS !== 'web' && (
+        <PdfViewerModal
+          visible={showPdfModal}
+          laudo={laudo}
+          onClose={() => setShowPdfModal(false)}
+          onShare={handleShare}
+        />
+      )}
     </>
   );
 }

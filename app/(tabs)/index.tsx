@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Platform,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -48,6 +49,17 @@ export default function LaudosScreen() {
   }, []);
 
   const handleDeleteLaudo = useCallback((id: string) => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Tem certeza que deseja excluir este laudo? Esta ação não pode ser desfeita.')) {
+        setLoading(true);
+        deleteLaudo(id).then(loadLaudos).catch(() => {
+          window.alert('Não foi possível excluir o laudo.');
+          setLoading(false);
+        });
+      }
+      return;
+    }
+
     Alert.alert(
       'Excluir Laudo',
       'Tem certeza que deseja excluir este laudo? Esta ação não pode ser desfeita.',
@@ -84,6 +96,10 @@ export default function LaudosScreen() {
     );
   }, [laudos, searchText]);
 
+  // Responsividade
+  const { width } = useWindowDimensions();
+  const numColumns = width > 1100 ? 3 : width > 700 ? 2 : 1;
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -111,7 +127,7 @@ export default function LaudosScreen() {
           }}
         >
           <Ionicons name="sparkles-outline" size={18} color="#fff" />
-          <Text style={styles.emptyButtonText}>Gerar 5 Laudos de Exemplo</Text>
+          <Text style={styles.emptyButtonText}>Gerar 1 Laudo de Exemplo</Text>
         </TouchableOpacity>
       </View>
     );
@@ -138,14 +154,19 @@ export default function LaudosScreen() {
         </View>
       ) : (
         <FlatList
+          key={`grid-${numColumns}`} // Força atualização ao virar a tela ou redimensionar a janela
+          numColumns={numColumns}
           data={filteredLaudos}
           keyExtractor={(item) => item.id}
+          columnWrapperStyle={numColumns > 1 ? { gap: 16, paddingHorizontal: 16 } : undefined}
           renderItem={({ item }) => (
-            <LaudoCard 
-              laudo={item} 
-              onPress={() => handlePressLaudo(item)} 
-              onDelete={handleDeleteLaudo}
-            />
+            <View style={{ flex: 1, maxWidth: numColumns > 1 ? `${100 / numColumns}%` : '100%' }}>
+              <LaudoCard 
+                laudo={item} 
+                onPress={() => handlePressLaudo(item)} 
+                onDelete={handleDeleteLaudo}
+              />
+            </View>
           )}
           initialNumToRender={8}
           maxToRenderPerBatch={10}

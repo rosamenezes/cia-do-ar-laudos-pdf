@@ -244,8 +244,8 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       background: #ffffff;
     }
     .foto-body img {
-      max-width: 90%;
-      max-height: 250px;
+      max-width: 100%;
+      max-height: 450px;
       width: auto;
       height: auto;
       object-fit: contain;

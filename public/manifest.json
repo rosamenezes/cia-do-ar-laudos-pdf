@@ -1,0 +1,16 @@
+{
+  "short_name": "Laudos",
+  "name": "Cia do Ar - Laudos de Revisão",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#db2777"
+}

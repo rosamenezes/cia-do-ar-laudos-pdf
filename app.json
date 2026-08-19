@@ -13,37 +13,16 @@
       "backgroundColor": "#ffffff"
     },
     "userInterfaceStyle": "light",
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.laudovoo.app",
-      "icon": "./assets/images/icon.png",
-      "infoPlist": {
-        "NSCameraUsageDescription": "Precisamos da câmera para fotografar o equipamento.",
-        "NSPhotoLibraryUsageDescription": "Precisamos da galeria para selecionar fotos do equipamento."
-      }
-    },
-    "android": {
-      "package": "com.laudovoo.app",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#ffffff"
-      }
-    },
     "web": {
       "bundler": "metro",
-      "output": "static"
+      "output": "static",
+      "shortName": "Laudos",
+      "name": "Cia do Ar - Laudos de Revisão",
+      "themeColor": "#db2777",
+      "backgroundColor": "#f8fafc"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Precisamos da galeria para selecionar fotos do equipamento.",
-          "cameraPermission": "Precisamos da câmera para fotografar o equipamento."
-        }
-      ],
-      "expo-sqlite",
-      "@react-native-community/datetimepicker"
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true

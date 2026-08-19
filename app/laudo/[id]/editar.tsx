@@ -32,7 +32,7 @@ export default function EditarLaudoScreen() {
       if (router.canGoBack()) {
         router.back();
       } else {
-        router.replace('/(tabs)');
+        router.replace('/');
       }
     } finally {
       setLoading(false);
@@ -59,22 +59,12 @@ export default function EditarLaudoScreen() {
 
       await saveLaudo(laudoAtualizado); // INSERT OR REPLACE atualiza o registro
 
-      Alert.alert(
-        '✅ Laudo Atualizado',
-        `As alterações no laudo ${laudo.numeroLaudo} foram salvas com sucesso.`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/(tabs)');
-              }
-            },
-          },
-        ]
-      );
+      window.alert(`✅ As alterações no laudo ${laudo.numeroLaudo} foram salvas com sucesso.`);
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/');
+      }
     } catch (e: any) {
       Alert.alert('Erro', e.message ?? 'Não foi possível salvar as alterações.');
     } finally {

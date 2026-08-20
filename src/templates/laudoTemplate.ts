@@ -187,7 +187,6 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
     
     th, td {
       border: 1px solid #e2e8f0;
-      padding: 10px 12px;
       text-align: left;
     }
 
@@ -202,12 +201,14 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       color: #475569;
       text-transform: uppercase;
       width: 25%;
+      padding: 7px 12px 7px 20px !important;
     }
     
     td {
       font-size: 11px;
       font-weight: 500;
       color: #0f172a;
+      padding: 7px 12px 7px 20px !important;
     }
 
     /* FOTO MOLDURA */
@@ -251,7 +252,7 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       background: linear-gradient(135deg, ${resultColor}15 0%, ${resultColor}08 100%);
       border: 2px solid ${resultColor};
       border-radius: 12px;
-      padding: 16px 20px;
+      padding: 32px 24px;
       text-align: center;
       position: relative;
       overflow: hidden;
@@ -264,33 +265,41 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       background: linear-gradient(90deg, #db2777, ${resultColor});
     }
     .resultado-icon {
-      font-size: 48px;
+      font-size: 64px;
       line-height: 1;
-      margin-bottom: 4px;
+      margin-bottom: 8px;
       display: block;
     }
     .resultado-title {
-      font-size: 13px;
+      font-size: 16px;
       color: #64748b;
       text-transform: uppercase;
       font-weight: 700;
       letter-spacing: 1px;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
     .resultado-value {
-      font-size: 24px;
+      font-size: 32px;
       font-weight: 900;
       color: ${resultColor};
       letter-spacing: -0.5px;
+      text-transform: uppercase;
     }
 
     .observacoes {
-      margin-top: 8px;
-      padding: 8px 12px;
+      margin-top: 12px;
+      padding: 14px 18px;
       background: #f1f5f9;
-      border-radius: 6px;
-      font-size: 10px;
-      color: #334155;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #1e293b;
+      line-height: 1.6;
+    }
+    .observacoes strong {
+      font-size: 13px;
+      color: #0f172a;
+      display: block;
+      margin-bottom: 4px;
     }
 
     /* BOTTOM SECTION */
@@ -509,11 +518,11 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
 
       <!-- PARECER GERAL -->
       <div class="resultado-banner">
-        <div class="selo-qualidade" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px 12px; display: flex; align-items: center; gap: 8px;">
-          <div style="background: #ecfdf5; width: 22px; height: 22px; border-radius: 11px; display: flex; align-items: center; justify-content: center; color: #10b981; font-size: 14px; font-weight: bold;">✓</div>
-          <div>
-            <div style="font-size: 9px; font-weight: 700; color: #1e293b; letter-spacing: 0.2px;">INSPEÇÃO CERTIFICADA</div>
-            <div style="font-size: 7px; font-weight: 500; color: #64748b;">Cia. do Ar • Padrão de Qualidade</div>
+        <div class="selo-qualidade" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 18px; display: flex; align-items: center; gap: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <div style="background: #ecfdf5; width: 36px; height: 36px; border-radius: 18px; display: flex; align-items: center; justify-content: center; color: #10b981; font-size: 20px; font-weight: bold;">✓</div>
+          <div style="text-align: left;">
+            <div style="font-size: 13px; font-weight: 900; color: #1e293b; letter-spacing: 0.3px;">INSPEÇÃO CERTIFICADA</div>
+            <div style="font-size: 9px; font-weight: 600; color: #64748b; margin-top: 2px;">Cia. do Ar • Padrão de Qualidade</div>
           </div>
         </div>
         <span class="resultado-icon">${resultIcon}</span>

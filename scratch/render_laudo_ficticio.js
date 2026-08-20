@@ -10,7 +10,8 @@ const logoMatch = logoAssetContent.match(/export const LOGO_BASE64 =\s*'([^']+)'
 const LOGO_BASE64 = logoMatch ? logoMatch[1] : '';
 
 // Ler a foto enviada pelo usuário e converter em base64
-const photoPath = '/Users/guilhermemenezes/.gemini/antigravity/brain/917cf260-a728-49a1-85dc-a59c07a1ead2/.user_uploaded/media_1787056116227.jpg';
+const photoPath =
+  '/Users/guilhermemenezes/.gemini/antigravity/brain/917cf260-a728-49a1-85dc-a59c07a1ead2/.user_uploaded/media_1787056116227.jpg';
 let photoBase64 = '';
 if (fs.existsSync(photoPath)) {
   const photoBuffer = fs.readFileSync(photoPath);
@@ -64,7 +65,8 @@ const laudo = {
   tecidoPorosidadeIntradorso: 'Excelente (420s)',
   tecidoPorosidadeExtradorso: 'Excelente (400s)',
   parecerConformeFabricante: 'Sim',
-  observacoes: 'LAUDO FICTÍCIO. Vela simulada encontra-se em estado excepcional, praticamente nova. Todas as medições indicam vida útil superior a 90%.',
+  observacoes:
+    'LAUDO FICTÍCIO. Vela simulada encontra-se em estado excepcional, praticamente nova. Todas as medições indicam vida útil superior a 90%.',
   parecerGeral: 'OTIMO',
   fotoUri: photoBase64,
   criadoEm: '2026-08-18T10:00:00.000Z',
@@ -175,14 +177,18 @@ const html = `
         <tr><th>Cor Extradorso</th><td colspan="3">${laudo.corExtradorso}</td></tr>
       </table>
 
-      ${laudo.fotoUri ? `
+      ${
+        laudo.fotoUri
+          ? `
       <div class="foto-card">
         <div class="foto-header">📷 REGISTRO FOTOGRÁFICO DO EQUIPAMENTO</div>
         <div class="foto-body">
           <img src="${laudo.fotoUri}" alt="Foto da vela" />
         </div>
       </div>
-      ` : ''}
+      `
+          : ''
+      }
     </div>
   </div>
 
@@ -270,7 +276,7 @@ async function main() {
   // Salvar no Desktop do usuário
   const desktopDir = path.join(os.homedir(), 'Desktop');
   const outputPdf = path.join(desktopDir, 'Laudo_Ficticio_João_Voador.pdf');
-  
+
   await page.pdf({
     path: outputPdf,
     format: 'A4',

@@ -6,7 +6,8 @@ const puppeteer = require('puppeteer');
 const { generateLaudoHtml } = require('../src/templates/laudoTemplate');
 
 async function generatePdf() {
-  const photoPath = '/Users/guilhermemenezes/.gemini/antigravity/brain/917cf260-a728-49a1-85dc-a59c07a1ead2/.user_uploaded/media_1787056116227.jpg';
+  const photoPath =
+    '/Users/guilhermemenezes/.gemini/antigravity/brain/917cf260-a728-49a1-85dc-a59c07a1ead2/.user_uploaded/media_1787056116227.jpg';
   const photoBuffer = fs.readFileSync(photoPath);
   const photoBase64 = `data:image/jpeg;base64,${photoBuffer.toString('base64')}`;
 

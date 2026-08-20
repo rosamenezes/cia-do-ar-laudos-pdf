@@ -730,7 +730,6 @@ export function LaudoForm({
         </View>
       </View>
       <View style={styles.row}>
-
         <View style={styles.flex1}>
           <InputField
             control={control}

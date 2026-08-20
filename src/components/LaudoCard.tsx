@@ -44,8 +44,8 @@ function LaudoCardComponent({ laudo, onPress, onDelete }: LaudoCardProps) {
               <Text style={[styles.badgeText, { color: resultColor }]}>{resultLabel}</Text>
             </View>
             {onDelete && (
-              <TouchableOpacity 
-                onPress={() => onDelete(laudo.id!)} 
+              <TouchableOpacity
+                onPress={() => onDelete(laudo.id!)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Ionicons name="trash-outline" size={18} color="#ef4444" />

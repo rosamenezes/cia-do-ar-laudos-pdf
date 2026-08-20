@@ -9,7 +9,8 @@ const logoMatch = logoAssetContent.match(/export const LOGO_BASE64 =\s*'([^']+)'
 const LOGO_BASE64 = logoMatch ? logoMatch[1] : '';
 
 // Ler a foto enviada pelo usuário e converter em base64
-const photoPath = '/Users/guilhermemenezes/.gemini/antigravity/brain/917cf260-a728-49a1-85dc-a59c07a1ead2/.user_uploaded/media_1787056116227.jpg';
+const photoPath =
+  '/Users/guilhermemenezes/.gemini/antigravity/brain/917cf260-a728-49a1-85dc-a59c07a1ead2/.user_uploaded/media_1787056116227.jpg';
 const photoBuffer = fs.readFileSync(photoPath);
 const photoBase64 = `data:image/jpeg;base64,${photoBuffer.toString('base64')}`;
 

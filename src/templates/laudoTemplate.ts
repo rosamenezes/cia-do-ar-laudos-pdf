@@ -388,14 +388,18 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       </table>
 
       <!-- FOTO -->
-      ${fotoBase64 ? `
+      ${
+        fotoBase64
+          ? `
       <div class="foto-card">
         <div class="foto-header">📷 REGISTRO FOTOGRÁFICO DO EQUIPAMENTO</div>
         <div class="foto-body">
           <img src="${fotoBase64}" alt="Foto da vela" />
         </div>
       </div>
-      ` : ''}
+      `
+          : ''
+      }
 
     </div>
   </div>
@@ -520,12 +524,16 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
         <div class="resultado-value">${resultLabel}</div>
       </div>
 
-      ${laudo.observacoes ? `
+      ${
+        laudo.observacoes
+          ? `
       <div class="observacoes">
         <strong>Observações Adicionais:</strong><br/>
         ${laudo.observacoes}
       </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <div class="footer-text">
         Documento gerado digitalmente em ${formatDate(laudo.dataEmissao)} | Cia. do Ar

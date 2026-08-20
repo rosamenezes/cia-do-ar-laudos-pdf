@@ -30,7 +30,15 @@ function AppContent() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: '#f1f5f9',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 16,
+        }}
+      >
         <Image
           source={require('../assets/images/icon.png')}
           style={{ width: 80, height: 80 }}

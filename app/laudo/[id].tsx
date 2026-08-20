@@ -75,11 +75,13 @@ export default function LaudoDetailScreen() {
 
     // Usa a Web Share API nativa (funciona no iOS e Android — abre menu do sistema)
     if (typeof navigator !== 'undefined' && navigator.share) {
-      navigator.share({
-        title: `Laudo ${laudo.numeroLaudo} — ${laudo.nomeProprietario}`,
-        text: `Laudo de Revisão do equipamento ${laudo.fabricaModelo} de ${laudo.nomeProprietario}.`,
-        url: link,
-      }).catch(() => {}); // ignora se o usuário cancelar
+      navigator
+        .share({
+          title: `Laudo ${laudo.numeroLaudo} — ${laudo.nomeProprietario}`,
+          text: `Laudo de Revisão do equipamento ${laudo.fabricaModelo} de ${laudo.nomeProprietario}.`,
+          url: link,
+        })
+        .catch(() => {}); // ignora se o usuário cancelar
     } else {
       // Fallback para computadores: abre o WhatsApp Web
       window.open(`https://wa.me/?text=${texto}`, '_blank');
@@ -87,7 +89,11 @@ export default function LaudoDetailScreen() {
   };
 
   const handleDelete = () => {
-    if (window.confirm(`Deseja excluir o laudo ${laudo?.numeroLaudo}? Esta ação não pode ser desfeita.`)) {
+    if (
+      window.confirm(
+        `Deseja excluir o laudo ${laudo?.numeroLaudo}? Esta ação não pode ser desfeita.`
+      )
+    ) {
       deleteLaudo(laudo!.id).then(() => {
         if (router.canGoBack()) {
           router.back();
@@ -134,7 +140,7 @@ export default function LaudoDetailScreen() {
                 if (router.canGoBack()) {
                   router.back();
                 } else {
-                  router.replace('/(tabs)');
+                  router.replace('/');
                 }
               }}
               style={{
@@ -292,37 +298,74 @@ export default function LaudoDetailScreen() {
             ) : (
               <Ionicons name="print-outline" size={20} color="#fff" />
             )}
-            <Text style={styles.actionBtnText}>
-              Imprimir / PDF
-            </Text>
+            <Text style={styles.actionBtnText}>Imprimir / PDF</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
       {/* Overlay do PDF para resolver o problema do Safari iOS PWA */}
       {printHtml && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, backgroundColor: '#f8fafc' }}>
-          <View style={{ height: 70, backgroundColor: '#1e293b', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 }}>
-            <TouchableOpacity onPress={() => setPrintHtml(null)} style={{ paddingVertical: 12, paddingHorizontal: 16, backgroundColor: '#334155', borderRadius: 10 }}>
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 99999,
+            backgroundColor: '#f8fafc',
+          }}
+        >
+          <View
+            style={{
+              height: 70,
+              backgroundColor: '#1e293b',
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => setPrintHtml(null)}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                backgroundColor: '#334155',
+                borderRadius: 10,
+              }}
+            >
               <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>⬅ Fechar PDF</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => window.print()} style={{ paddingVertical: 12, paddingHorizontal: 16, backgroundColor: '#db2777', borderRadius: 10 }}>
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>🖨 Imprimir / Salvar</Text>
+            <TouchableOpacity
+              onPress={() => window.print()}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                backgroundColor: '#db2777',
+                borderRadius: 10,
+              }}
+            >
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+                🖨 Imprimir / Salvar
+              </Text>
             </TouchableOpacity>
           </View>
           {React.createElement('iframe', {
             id: 'print-iframe',
             srcDoc: printHtml,
-            style: { flex: 1, border: 'none', width: '100%', height: 'calc(100% - 70px)' }
+            style: { flex: 1, border: 'none', width: '100%', height: 'calc(100% - 70px)' },
           })}
         </View>
       )}
 
       {/* DOM Injection para a Impressora da Apple capturar corretamente */}
-      {printHtml && typeof document !== 'undefined' && createPortal(
-        <div id="print-root" dangerouslySetInnerHTML={{ __html: printHtml }} />,
-        document.body
-      )}
+      {printHtml &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div id="print-root" dangerouslySetInnerHTML={{ __html: printHtml }} />,
+          document.body
+        )}
     </>
   );
 }

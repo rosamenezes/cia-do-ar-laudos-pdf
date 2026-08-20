@@ -48,40 +48,49 @@ export default function LaudosScreen() {
     router.push(`/laudo/${laudo.id}`);
   }, []);
 
-  const handleDeleteLaudo = useCallback((id: string) => {
-    if (Platform.OS === 'web') {
-      if (window.confirm('Tem certeza que deseja excluir este laudo? Esta ação não pode ser desfeita.')) {
-        setLoading(true);
-        deleteLaudo(id).then(loadLaudos).catch(() => {
-          window.alert('Não foi possível excluir o laudo.');
-          setLoading(false);
-        });
-      }
-      return;
-    }
-
-    Alert.alert(
-      'Excluir Laudo',
-      'Tem certeza que deseja excluir este laudo? Esta ação não pode ser desfeita.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await deleteLaudo(id);
-              await loadLaudos();
-            } catch (error) {
-              Alert.alert('Erro', 'Não foi possível excluir o laudo.');
+  const handleDeleteLaudo = useCallback(
+    (id: string) => {
+      if (Platform.OS === 'web') {
+        if (
+          window.confirm(
+            'Tem certeza que deseja excluir este laudo? Esta ação não pode ser desfeita.'
+          )
+        ) {
+          setLoading(true);
+          deleteLaudo(id)
+            .then(loadLaudos)
+            .catch(() => {
+              window.alert('Não foi possível excluir o laudo.');
               setLoading(false);
-            }
+            });
+        }
+        return;
+      }
+
+      Alert.alert(
+        'Excluir Laudo',
+        'Tem certeza que deseja excluir este laudo? Esta ação não pode ser desfeita.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Excluir',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setLoading(true);
+                await deleteLaudo(id);
+                await loadLaudos();
+              } catch (error) {
+                Alert.alert('Erro', 'Não foi possível excluir o laudo.');
+                setLoading(false);
+              }
+            },
           },
-        },
-      ]
-    );
-  }, [loadLaudos]);
+        ]
+      );
+    },
+    [loadLaudos]
+  );
 
   // Filtragem em memória — instantânea
   const filteredLaudos = useMemo(() => {
@@ -161,9 +170,9 @@ export default function LaudosScreen() {
           columnWrapperStyle={numColumns > 1 ? { gap: 16, paddingHorizontal: 16 } : undefined}
           renderItem={({ item }) => (
             <View style={{ flex: 1, maxWidth: numColumns > 1 ? `${100 / numColumns}%` : '100%' }}>
-              <LaudoCard 
-                laudo={item} 
-                onPress={() => handlePressLaudo(item)} 
+              <LaudoCard
+                laudo={item}
+                onPress={() => handlePressLaudo(item)}
                 onDelete={handleDeleteLaudo}
               />
             </View>

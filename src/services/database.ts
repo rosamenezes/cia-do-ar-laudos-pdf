@@ -1,4 +1,13 @@
-import { collection, doc, setDoc, getDocs, getDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  setDoc,
+  getDocs,
+  getDoc,
+  deleteDoc,
+  query,
+  orderBy,
+} from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { LaudoParapente } from '../types/laudo';
 
@@ -10,17 +19,17 @@ export async function saveLaudo(laudo: LaudoParapente): Promise<void> {
   const cidadeEstadoVal = `${cidadeVal} - ${estadoVal}`;
 
   const docRef = doc(db, COLLECTION_NAME, laudo.id);
-  
+
   const payload: any = {
     ...laudo,
     cidade: cidadeVal,
     estado: estadoVal,
     cidadeEstado: cidadeEstadoVal,
-    atualizadoEm: new Date().toISOString()
+    atualizadoEm: new Date().toISOString(),
   };
 
   // O Firebase não aceita "undefined", então deletamos essas chaves ou passamos null
-  Object.keys(payload).forEach(key => {
+  Object.keys(payload).forEach((key) => {
     if (payload[key] === undefined) {
       payload[key] = null;
     }
@@ -33,16 +42,16 @@ export async function getLaudos(): Promise<LaudoParapente[]> {
   const q = query(collection(db, COLLECTION_NAME), orderBy('criadoEm', 'desc'));
   try {
     const snapshot = await getDocs(q);
-    
+
     if (snapshot.empty) {
       await seedMockLaudos();
       const newSnapshot = await getDocs(q);
-      return newSnapshot.docs.map(doc => doc.data() as LaudoParapente);
+      return newSnapshot.docs.map((doc) => doc.data() as LaudoParapente);
     }
 
-    return snapshot.docs.map(doc => doc.data() as LaudoParapente);
+    return snapshot.docs.map((doc) => doc.data() as LaudoParapente);
   } catch (error) {
-    console.error("Erro ao buscar laudos:", error);
+    console.error('Erro ao buscar laudos:', error);
     return [];
   }
 }
@@ -50,7 +59,7 @@ export async function getLaudos(): Promise<LaudoParapente[]> {
 export async function getLaudoById(id: string): Promise<LaudoParapente | null> {
   const docRef = doc(db, COLLECTION_NAME, id);
   const docSnap = await getDoc(docRef);
-  
+
   if (docSnap.exists()) {
     return docSnap.data() as LaudoParapente;
   }
@@ -63,10 +72,14 @@ export async function deleteLaudo(id: string): Promise<void> {
 
 export async function updatePdfUri(id: string, pdfUri: string): Promise<void> {
   const docRef = doc(db, COLLECTION_NAME, id);
-  await setDoc(docRef, {
-    pdfUri,
-    atualizadoEm: new Date().toISOString()
-  }, { merge: true });
+  await setDoc(
+    docRef,
+    {
+      pdfUri,
+      atualizadoEm: new Date().toISOString(),
+    },
+    { merge: true }
+  );
 }
 
 export function generateId(): string {

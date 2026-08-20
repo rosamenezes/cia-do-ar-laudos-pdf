@@ -11,7 +11,7 @@ export interface PhotoResult {
 
 export async function requestPermissions(): Promise<boolean> {
   if (Platform.OS === 'web') return true;
-  
+
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') return false;
 
@@ -61,7 +61,7 @@ async function compressAndEncodeBase64(uri: string): Promise<PhotoResult> {
       compress: 0.5, // 50% para poupar espaço no banco
       format: ImageManipulator.SaveFormat.JPEG,
     });
-    
+
     const finalUri = manipulated.uri;
     const width = manipulated.width;
     const height = manipulated.height;
@@ -90,8 +90,8 @@ async function compressAndEncodeBase64(uri: string): Promise<PhotoResult> {
       height,
     };
   } catch (error) {
-    console.error("Erro ao converter imagem para Base64:", error);
-    throw new Error("Falha ao processar a imagem.");
+    console.error('Erro ao converter imagem para Base64:', error);
+    throw new Error('Falha ao processar a imagem.');
   }
 }
 

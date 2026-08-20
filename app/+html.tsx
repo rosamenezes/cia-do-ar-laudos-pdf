@@ -10,22 +10,27 @@ export default function Root({ children }: PropsWithChildren) {
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"
+        />
         <meta name="google" content="notranslate" />
-        
+
         {/* PWA / iOS Home Screen Tags */}
         <title>Cia do Ar Laudos</title>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Laudos" />
-        
+
         {/* Ícone fixo para o Safari */}
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" href="/icon.png" />
         <link rel="manifest" href="/manifest.json" />
 
         <ScrollViewStyleReset />
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
           @media print {
             #root { display: none !important; }
             #print-root { display: block !important; position: static !important; }
@@ -33,8 +38,11 @@ export default function Root({ children }: PropsWithChildren) {
           }
           @media screen {
             #print-root { display: none !important; }
+            body { touch-action: manipulation; } /* Evita zoom com duplo toque no iOS */
           }
-        `}} />
+        `,
+          }}
+        />
       </head>
       <body style={{ backgroundColor: '#f8fafc' }}>{children}</body>
     </html>

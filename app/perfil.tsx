@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Image,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
 import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,9 +31,7 @@ export default function PerfilScreen() {
           <View style={styles.avatarCircle}>
             <Ionicons name="person" size={40} color="#db2777" />
           </View>
-          <Text style={styles.userName}>
-            {user?.displayName || 'Usuário'}
-          </Text>
+          <Text style={styles.userName}>{user?.displayName || 'Usuário'}</Text>
           <Text style={styles.userEmail}>{user?.email || '—'}</Text>
         </View>
 
@@ -72,18 +63,12 @@ export default function PerfilScreen() {
         </View>
 
         {/* Botão de Logout */}
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={handleLogout}
-          activeOpacity={0.8}
-        >
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={20} color="#dc2626" />
           <Text style={styles.logoutBtnText}>Sair da Conta</Text>
         </TouchableOpacity>
 
-        <Text style={styles.footerText}>
-          Cia. do Ar — Sistema de Laudos de Parapente
-        </Text>
+        <Text style={styles.footerText}>Cia. do Ar — Sistema de Laudos de Parapente</Text>
       </ScrollView>
     </>
   );

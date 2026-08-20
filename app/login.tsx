@@ -40,7 +40,7 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       await loginWithEmail(email.trim(), password);
-      
+
       // Sucesso! O Contexto deve pegar a mudança, mas para garantir:
       router.replace('/');
     } catch (e: any) {
@@ -48,7 +48,11 @@ export default function LoginScreen() {
       const code = e?.code ?? '';
       if (code === 'auth/invalid-email') {
         setError('Formato de e-mail inválido.');
-      } else if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+      } else if (
+        code === 'auth/user-not-found' ||
+        code === 'auth/wrong-password' ||
+        code === 'auth/invalid-credential'
+      ) {
         setError('E-mail ou senha incorretos.');
       } else if (code === 'auth/too-many-requests') {
         setError('Muitas tentativas. Aguarde alguns minutos.');
@@ -121,7 +125,12 @@ export default function LoginScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Senha</Text>
             <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={18} color="#94a3b8" style={styles.inputIcon} />
+              <Ionicons
+                name="lock-closed-outline"
+                size={18}
+                color="#94a3b8"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
                 placeholder="••••••••"

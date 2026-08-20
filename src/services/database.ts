@@ -7,8 +7,10 @@ import {
   deleteDoc,
   query,
   orderBy,
+  limit,
 } from 'firebase/firestore';
-import { db } from './firebaseConfig';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { db, storage } from './firebaseConfig';
 import { LaudoParapente } from '../types/laudo';
 
 const COLLECTION_NAME = 'laudos_parapente';
@@ -18,6 +20,19 @@ export async function saveLaudo(laudo: LaudoParapente): Promise<void> {
   const estadoVal = laudo.estado ?? '';
   const cidadeEstadoVal = `${cidadeVal} - ${estadoVal}`;
 
+  // Se tiver foto nova (Base64) ou local, faz upload para o Storage primeiro
+  let finalFotoUri = laudo.fotoUri;
+  if (finalFotoUri && finalFotoUri.startsWith('data:image')) {
+    const fileName = `fotos/${laudo.id}_${Date.now()}.jpg`;
+    const storageRef = ref(storage, fileName);
+    
+    // Faz o upload da string base64
+    await uploadString(storageRef, finalFotoUri, 'data_url');
+    
+    // Pega a URL pública
+    finalFotoUri = await getDownloadURL(storageRef);
+  }
+
   const docRef = doc(db, COLLECTION_NAME, laudo.id);
 
   const payload: any = {
@@ -25,6 +40,7 @@ export async function saveLaudo(laudo: LaudoParapente): Promise<void> {
     cidade: cidadeVal,
     estado: estadoVal,
     cidadeEstado: cidadeEstadoVal,
+    fotoUri: finalFotoUri, // Salva a URL nova
     atualizadoEm: new Date().toISOString(),
   };
 
@@ -39,7 +55,8 @@ export async function saveLaudo(laudo: LaudoParapente): Promise<void> {
 }
 
 export async function getLaudos(): Promise<LaudoParapente[]> {
-  const q = query(collection(db, COLLECTION_NAME), orderBy('criadoEm', 'desc'));
+  // ATENÇÃO: Adicionado limite de 15 para carregar instantaneamente!
+  const q = query(collection(db, COLLECTION_NAME), orderBy('criadoEm', 'desc'), limit(15));
   try {
     const snapshot = await getDocs(q);
 

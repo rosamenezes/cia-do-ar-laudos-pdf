@@ -36,7 +36,13 @@ export default function NovoLaudoScreen() {
       window.alert(`✅ O laudo ${laudo.numeroLaudo} foi salvo com sucesso!`);
       router.replace(`/laudo/${laudo.id}`);
     } catch (e: any) {
-      Alert.alert('Erro', e.message ?? 'Não foi possível salvar o laudo');
+      const msg = e?.message ?? 'Erro desconhecido';
+      console.error('Falha ao salvar:', e);
+      if (Platform.OS === 'web') {
+        window.alert('Erro ao salvar laudo: ' + msg);
+      } else {
+        Alert.alert('Erro', msg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -51,7 +57,7 @@ export default function NovoLaudoScreen() {
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: Math.max(40, insets.bottom + 20) },
+          { paddingBottom: Platform.OS === 'web' ? 40 : Math.max(40, insets.bottom + 20) },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"

@@ -19,8 +19,10 @@ export default function Root({ children }: PropsWithChildren) {
         {/* PWA / iOS Home Screen Tags */}
         <title>Cia do Ar Laudos</title>
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Laudos" />
+        <meta name="theme-color" content="#f8fafc" />
 
         {/* Ícone fixo para o Safari */}
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -38,7 +40,30 @@ export default function Root({ children }: PropsWithChildren) {
           }
           @media screen {
             #print-root { display: none !important; }
-            body { touch-action: manipulation; } /* Evita zoom com duplo toque no iOS */
+            html, body { 
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+              height: 100% !important;
+              min-height: 100% !important;
+              background-color: #f8fafc !important;
+              overflow: hidden !important;
+              touch-action: manipulation;
+              -webkit-text-size-adjust: 100%;
+            }
+            #root, #root > div, #root > div > div { 
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+              right: 0 !important;
+              bottom: 0 !important;
+              width: 100% !important;
+              height: 100% !important;
+              background-color: #f8fafc !important; 
+              display: flex !important;
+              flex-direction: column !important;
+              overflow: hidden !important;
+            }
           }
         `,
           }}

@@ -57,10 +57,8 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
   return `
 <div class="laudo-print-container">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-    
     .laudo-print-container {
-      font-family: 'Inter', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: #ffffff;
       color: #1e293b;
       font-size: 11px;
@@ -78,6 +76,7 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       position: relative;
       width: 100%;
       max-width: 210mm;
+      min-height: 292mm; /* Garante que a página ocupe a folha A4 inteira */
       margin: 0 auto;
       padding: 5mm 10mm 15mm 10mm;
       box-sizing: border-box;
@@ -183,12 +182,12 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 5px;
+      margin-bottom: 15px;
     }
     
     th, td {
       border: 1px solid #e2e8f0;
-      padding: 6px 9px;
+      padding: 10px 12px;
       text-align: left;
     }
 
@@ -510,14 +509,12 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
 
       <!-- PARECER GERAL -->
       <div class="resultado-banner">
-        <div class="selo-qualidade">
-          <svg width="234" height="54" viewBox="0 0 180 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="0.5" y="0.5" width="179" height="41" rx="4" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
-            <circle cx="21" cy="21" r="11" fill="#ecfdf5"/>
-            <path d="M 16 21 L 19 24 L 26 17" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="42" y="18" font-family="'Inter', sans-serif" font-size="9" font-weight="700" fill="#1e293b" letter-spacing="0.2px">INSPEÇÃO CERTIFICADA</text>
-            <text x="42" y="29" font-family="'Inter', sans-serif" font-size="7" font-weight="500" fill="#64748b">Cia. do Ar • Padrão de Qualidade</text>
-          </svg>
+        <div class="selo-qualidade" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px 12px; display: flex; align-items: center; gap: 8px;">
+          <div style="background: #ecfdf5; width: 22px; height: 22px; border-radius: 11px; display: flex; align-items: center; justify-content: center; color: #10b981; font-size: 14px; font-weight: bold;">✓</div>
+          <div>
+            <div style="font-size: 9px; font-weight: 700; color: #1e293b; letter-spacing: 0.2px;">INSPEÇÃO CERTIFICADA</div>
+            <div style="font-size: 7px; font-weight: 500; color: #64748b;">Cia. do Ar • Padrão de Qualidade</div>
+          </div>
         </div>
         <span class="resultado-icon">${resultIcon}</span>
         <div class="resultado-title">Parecer Geral da Vela</div>

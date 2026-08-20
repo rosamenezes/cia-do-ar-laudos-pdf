@@ -50,45 +50,31 @@ export default function LaudosScreen() {
 
   const handleDeleteLaudo = useCallback(
     (id: string) => {
+      const confirmMessage = 'Tem certeza que deseja excluir este laudo? Esta ação não pode ser desfeita.';
+
+      const processDeletion = async () => {
+        // Exclusão Otimista: remove da tela instantaneamente (0 segundos de espera)
+        setLaudos((prev) => prev.filter((l) => l.id !== id));
+        try {
+          await deleteLaudo(id);
+        } catch (error) {
+          window.alert('Não foi possível excluir o laudo. Ele será recarregado.');
+          // Reverte puxando do banco novamente em caso de erro
+          loadLaudos(false);
+        }
+      };
+
       if (Platform.OS === 'web') {
-        if (
-          window.confirm(
-            'Tem certeza que deseja excluir este laudo? Esta ação não pode ser desfeita.'
-          )
-        ) {
-          setLoading(true);
-          deleteLaudo(id)
-            .then(() => loadLaudos(false))
-            .catch(() => {
-              window.alert('Não foi possível excluir o laudo.');
-            })
-            .finally(() => setLoading(false));
+        if (window.confirm(confirmMessage)) {
+          processDeletion();
         }
         return;
       }
 
-      Alert.alert(
-        'Excluir Laudo',
-        'Tem certeza que deseja excluir este laudo? Esta ação não pode ser desfeita.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Excluir',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                setLoading(true);
-                await deleteLaudo(id);
-                await loadLaudos(false);
-              } catch (error) {
-                Alert.alert('Erro', 'Não foi possível excluir o laudo.');
-              } finally {
-                setLoading(false);
-              }
-            },
-          },
-        ]
-      );
+      Alert.alert('Excluir Laudo', confirmMessage, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Excluir', style: 'destructive', onPress: processDeletion },
+      ]);
     },
     [loadLaudos]
   );
@@ -186,7 +172,10 @@ export default function LaudosScreen() {
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={loadLaudos} tintColor="#db2777" />
           }
-          contentContainerStyle={[styles.list, { paddingBottom: Math.max(80, insets.bottom + 80) }]}
+          contentContainerStyle={[
+            styles.list,
+            { paddingBottom: Platform.OS === 'web' ? 100 : Math.max(80, insets.bottom + 80) },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         />
@@ -194,7 +183,10 @@ export default function LaudosScreen() {
 
       {/* Botão Flutuante (FAB - Floating Action Button) */}
       <TouchableOpacity
-        style={[styles.fab, { bottom: Math.max(20, insets.bottom + 10) }]}
+        style={[
+          styles.fab,
+          { bottom: Platform.OS === 'web' ? 24 : Math.max(24, insets.bottom + 14) },
+        ]}
         onPress={() => router.push('/novo')}
         activeOpacity={0.85}
       >

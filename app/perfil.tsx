@@ -23,7 +23,7 @@ export default function PerfilScreen() {
         style={styles.container}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: Math.max(40, insets.bottom + 20) },
+          { paddingBottom: Platform.OS === 'web' ? 40 : Math.max(40, insets.bottom + 20) },
         ]}
       >
         {/* Avatar e informações */}

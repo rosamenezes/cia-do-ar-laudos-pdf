@@ -1,14 +1,30 @@
 import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, Image, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Image, Text, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeAreaProvider, SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
+import React, { useMemo } from 'react';
 
 // Mantém a tela de carregamento visível enquanto as fontes baixam
 SplashScreen.preventAutoHideAsync();
+
+function SafeInsetsOverride({ children }: { children: React.ReactNode }) {
+  const insets = useSafeAreaInsets();
+  const customInsets = useMemo(
+    () => (Platform.OS === 'web' ? { ...insets, bottom: 0 } : insets),
+    [insets]
+  );
+
+  return (
+    <SafeAreaInsetsContext.Provider value={customInsets}>
+      {children}
+    </SafeAreaInsetsContext.Provider>
+  );
+}
 
 function AppContent() {
   const { isAuthenticated, loading } = useAuth();
@@ -146,8 +162,21 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <SafeAreaProvider
+      initialMetrics={
+        Platform.OS === 'web'
+          ? {
+              frame: { x: 0, y: 0, width: 0, height: 0 },
+              insets: { top: 0, left: 0, right: 0, bottom: 0 },
+            }
+          : undefined
+      }
+    >
+      <SafeInsetsOverride>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </SafeInsetsOverride>
+    </SafeAreaProvider>
   );
 }

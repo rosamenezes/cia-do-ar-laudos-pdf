@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LaudoParapente } from '../../src/types/laudo';
 import { getLaudoById, deleteLaudo } from '../../src/services/database';
-import { generatePdfHtml } from '../../src/services/pdfGenerator';
+import { generatePdfHtml, generatePdfBlob } from '../../src/services/pdfGenerator';
 import {
   PARECER_GERAL_LABELS,
   PARECER_GERAL_COLORS,
@@ -55,36 +55,16 @@ export default function LaudoDetailScreen() {
     }, [loadLaudo])
   );
 
-  const handleShare = async () => {
+  const handleOpenPrintView = async () => {
     if (!laudo) return;
     try {
       setGeneratingPdf(true);
       const html = await generatePdfHtml(laudo);
       setPrintHtml(html);
     } catch (e: any) {
-      window.alert('Erro ao processar PDF: ' + (e.message ?? ''));
+      window.alert('Erro ao processar visualização: ' + (e.message ?? ''));
     } finally {
       setGeneratingPdf(false);
-    }
-  };
-
-  const handleShareLink = () => {
-    if (!laudo) return;
-    const link = `${window.location.origin}/laudo/${laudo.id}`;
-    const texto = `Olá! Segue o Laudo de Revisão do equipamento *${laudo.fabricaModelo}* (S/N: ${laudo.numeroSerie}) referente a *${laudo.nomeProprietario}*.%0AConsulte o laudo completo: ${link}`;
-
-    // Usa a Web Share API nativa (funciona no iOS e Android — abre menu do sistema)
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      navigator
-        .share({
-          title: `Laudo ${laudo.numeroLaudo} — ${laudo.nomeProprietario}`,
-          text: `Laudo de Revisão do equipamento ${laudo.fabricaModelo} de ${laudo.nomeProprietario}.`,
-          url: link,
-        })
-        .catch(() => {}); // ignora se o usuário cancelar
-    } else {
-      // Fallback para computadores: abre o WhatsApp Web
-      window.open(`https://wa.me/?text=${texto}`, '_blank');
     }
   };
 
@@ -183,7 +163,7 @@ export default function LaudoDetailScreen() {
         style={styles.container}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: Math.max(40, insets.bottom + 20) },
+          { paddingBottom: Platform.OS === 'web' ? 40 : Math.max(40, insets.bottom + 20) },
         ]}
       >
         {/* Resultado Banner */}
@@ -279,26 +259,17 @@ export default function LaudoDetailScreen() {
         {/* Ações */}
         <View style={styles.actionsRow}>
           <TouchableOpacity
-            style={[styles.actionBtn, styles.shareLinkBtn]}
-            onPress={handleShareLink}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="share-social-outline" size={20} color="#fff" />
-            <Text style={styles.actionBtnText}>Compartilhar Link</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.shareBtn]}
-            onPress={handleShare}
+            style={[styles.actionBtn, { backgroundColor: '#db2777' }]}
+            onPress={handleOpenPrintView}
             disabled={generatingPdf}
             activeOpacity={0.8}
           >
             {generatingPdf ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Ionicons name="print-outline" size={20} color="#fff" />
+              <Ionicons name="document-text-outline" size={20} color="#fff" />
             )}
-            <Text style={styles.actionBtnText}>Imprimir / PDF</Text>
+            <Text style={styles.actionBtnText}>Gerar PDF (Compartilhar / Salvar)</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -318,38 +289,42 @@ export default function LaudoDetailScreen() {
         >
           <View
             style={{
-              height: 70,
+              paddingTop: Math.max(insets.top, 16),
+              paddingBottom: 16,
               backgroundColor: '#1e293b',
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingHorizontal: 16,
             }}
           >
-            <TouchableOpacity
-              onPress={() => setPrintHtml(null)}
-              style={{
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                backgroundColor: '#334155',
-                borderRadius: 10,
-              }}
-            >
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>⬅ Fechar PDF</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => window.print()}
-              style={{
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                backgroundColor: '#db2777',
-                borderRadius: 10,
-              }}
-            >
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
-                🖨 Imprimir / Salvar
-              </Text>
-            </TouchableOpacity>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+                <Text style={{ color: '#cbd5e1', fontSize: 13, textAlign: 'center', lineHeight: 18 }}>
+                  💡 Para enviar pelo <Text style={{fontWeight: 'bold', color: '#fff'}}>WhatsApp</Text>: toque em Compartilhar e depois no <Text style={{fontWeight: 'bold', color: '#fff'}}>ícone ⇡</Text> do iPhone.
+                </Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16 }}>
+              <TouchableOpacity
+                onPress={() => setPrintHtml(null)}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  backgroundColor: '#334155',
+                  borderRadius: 10,
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>⬅ Fechar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => window.print()}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  backgroundColor: '#db2777',
+                  borderRadius: 10,
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+                  Compartilhar / Salvar
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
           {React.createElement('iframe', {
             id: 'print-iframe',
@@ -471,18 +446,17 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  viewPdfBtnText: { color: '#0f172a', fontSize: 14, fontWeight: '700' },
-  shareLinkBtn: {
-    backgroundColor: '#3b82f6',
-    shadowColor: '#3b82f6',
+  sharePdfBtn: {
+    backgroundColor: '#db2777',
+    shadowColor: '#db2777',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
   },
-  shareBtn: {
-    backgroundColor: '#db2777',
-    shadowColor: '#db2777',
+  printBtn: {
+    backgroundColor: '#3b82f6',
+    shadowColor: '#3b82f6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

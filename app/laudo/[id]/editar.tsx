@@ -99,7 +99,7 @@ export default function EditarLaudoScreen() {
           style={styles.scroll}
           contentContainerStyle={[
             styles.content,
-            { paddingBottom: Math.max(40, insets.bottom + 20) },
+            { paddingBottom: Platform.OS === 'web' ? 40 : Math.max(40, insets.bottom + 20) },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"

@@ -56,21 +56,16 @@ export async function pickFromGallery(): Promise<PhotoResult | null> {
 }
 
 async function compressAndEncodeBase64(uri: string): Promise<PhotoResult> {
-  let finalUri = uri;
-  let width = 800;
-  let height = 600;
-
-  if (Platform.OS !== 'web') {
+  try {
     const manipulated = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 800 } }], {
       compress: 0.5, // 50% para poupar espaço no banco
       format: ImageManipulator.SaveFormat.JPEG,
     });
-    finalUri = manipulated.uri;
-    width = manipulated.width;
-    height = manipulated.height;
-  }
+    
+    const finalUri = manipulated.uri;
+    const width = manipulated.width;
+    const height = manipulated.height;
 
-  try {
     let base64String = '';
 
     if (Platform.OS === 'web') {

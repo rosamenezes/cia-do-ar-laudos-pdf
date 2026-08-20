@@ -1,28 +1,44 @@
-import { Stack } from 'expo-router';
+import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, Image, Text } from 'react-native';
+import { View, Image, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 
 // Mantém a tela de carregamento visível enquanto as fontes baixam
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  // Força o carregamento da fonte dos ícones (corrige o sumiço na Web)
-  const [loaded, error] = useFonts({
-    ...Ionicons.font,
-  });
+function AppContent() {
+  const { isAuthenticated, loading } = useAuth();
+  const segments = useSegments();
 
   useEffect(() => {
-    if (loaded || error) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded, error]);
+    if (loading) return;
 
-  if (!loaded && !error) {
-    return null;
+    const inAuthGroup = segments[0] === 'login';
+
+    if (!isAuthenticated && !inAuthGroup) {
+      // Tenta acessar página protegida sem estar logado -> Login
+      router.replace('/login');
+    } else if (isAuthenticated && inAuthGroup) {
+      // Tenta acessar página de login já estando logado -> Home
+      router.replace('/');
+    }
+  }, [loading, isAuthenticated, segments]);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
+        <Image
+          source={require('../assets/images/icon.png')}
+          style={{ width: 80, height: 80 }}
+          resizeMode="contain"
+        />
+        <ActivityIndicator size="large" color="#db2777" />
+      </View>
+    );
   }
 
   return (
@@ -37,6 +53,12 @@ export default function RootLayout() {
           headerShadowVisible: true,
         }}
       >
+        <Stack.Screen
+          name="login"
+          options={{
+            headerShown: false,
+          }}
+        />
         <Stack.Screen
           name="index"
           options={{
@@ -55,6 +77,15 @@ export default function RootLayout() {
                   Cia. do Ar
                 </Text>
               </View>
+            ),
+            headerRight: () => (
+              <TouchableOpacity
+                onPress={() => router.push('/perfil')}
+                style={{ padding: 8, marginRight: 4 }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="person-circle-outline" size={28} color="#64748b" />
+              </TouchableOpacity>
             ),
           }}
         />
@@ -78,7 +109,37 @@ export default function RootLayout() {
             presentation: 'card',
           }}
         />
+        <Stack.Screen
+          name="perfil"
+          options={{
+            title: 'Perfil',
+            presentation: 'card',
+          }}
+        />
       </Stack>
     </View>
+  );
+}
+
+export default function RootLayout() {
+  // Força o carregamento da fonte dos ícones (corrige o sumiço na Web)
+  const [loaded, error] = useFonts({
+    ...Ionicons.font,
+  });
+
+  useEffect(() => {
+    if (loaded || error) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded, error]);
+
+  if (!loaded && !error) {
+    return null;
+  }
+
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

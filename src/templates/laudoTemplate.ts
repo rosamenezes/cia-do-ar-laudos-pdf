@@ -55,17 +55,11 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
   `;
 
   return `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Laudo ${laudo.numeroLaudo}</title>
+<div class="laudo-print-container">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
     
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    body {
+    .laudo-print-container {
       font-family: 'Inter', sans-serif;
       background: #ffffff;
       color: #1e293b;
@@ -73,6 +67,7 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       line-height: 1.4;
       -webkit-print-color-adjust: exact;
     }
+    .laudo-print-container * { margin: 0; padding: 0; box-sizing: border-box; }
 
     @page {
       size: A4 portrait;
@@ -86,14 +81,11 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       margin: 0 auto;
       padding: 5mm 10mm 15mm 10mm;
       box-sizing: border-box;
-      min-height: 292mm;
-      page-break-after: always;
-      break-after: page;
     }
     
-    .last-page {
-      page-break-after: auto;
-      break-after: auto;
+    .page-break {
+      page-break-before: always;
+      break-before: page;
     }
 
     /* SELO DE QUALIDADE PREMIUM */
@@ -245,7 +237,7 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
     }
     .foto-body img {
       max-width: 100%;
-      max-height: 450px;
+      max-height: 280px;
       width: auto;
       height: auto;
       object-fit: contain;
@@ -318,8 +310,6 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       color: #94a3b8;
     }
   </style>
-</head>
-<body>
 
   <!-- ════════════════════════════════════════
        PÁGINA 1 — Dados + Identificação + Foto
@@ -413,7 +403,7 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
   <!-- ════════════════════════════════════════
        PÁGINA 2 — Checagem de Linhas e Tecido
        ════════════════════════════════════════ -->
-  <div class="pdf-page">
+  <div class="pdf-page page-break">
     <!-- MARCA D'ÁGUA INDIVIDUAL DA PÁGINA -->
     <div class="global-watermark">
       <img src="${LOGO_BASE64}" style="width: 100%; height: auto; display: block;" />
@@ -500,7 +490,7 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
   <!-- ════════════════════════════════════════
        PÁGINA 3 — Parecer Geral + Rodapé
        ════════════════════════════════════════ -->
-  <div class="pdf-page last-page">
+  <div class="pdf-page page-break">
     <!-- MARCA D'ÁGUA INDIVIDUAL DA PÁGINA -->
     <div class="global-watermark">
       <img src="${LOGO_BASE64}" style="width: 100%; height: auto; display: block;" />
@@ -544,7 +534,9 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
     </div>
   </div>
 
-</body>
-</html>
+      </div>
+    </div>
+  </div>
+</div>
   `;
 }

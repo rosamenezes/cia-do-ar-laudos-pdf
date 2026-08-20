@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   View,
   Text,
@@ -8,12 +9,12 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { useLocalSearchParams, router, Stack, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LaudoParapente } from '../../src/types/laudo';
 import { getLaudoById, deleteLaudo } from '../../src/services/database';
-import { generateAndShare } from '../../src/services/pdfGenerator';
+import { generatePdfHtml } from '../../src/services/pdfGenerator';
 import {
   PARECER_GERAL_LABELS,
   PARECER_GERAL_COLORS,
@@ -35,6 +36,7 @@ export default function LaudoDetailScreen() {
   const [laudo, setLaudo] = useState<LaudoParapente | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [printHtml, setPrintHtml] = useState<string | null>(null);
 
   const loadLaudo = useCallback(async () => {
     try {
@@ -47,19 +49,40 @@ export default function LaudoDetailScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    loadLaudo();
-  }, [loadLaudo]);
+  useFocusEffect(
+    useCallback(() => {
+      loadLaudo();
+    }, [loadLaudo])
+  );
 
   const handleShare = async () => {
     if (!laudo) return;
     try {
       setGeneratingPdf(true);
-      await generateAndShare(laudo);
+      const html = await generatePdfHtml(laudo);
+      setPrintHtml(html);
     } catch (e: any) {
       window.alert('Erro ao processar PDF: ' + (e.message ?? ''));
     } finally {
       setGeneratingPdf(false);
+    }
+  };
+
+  const handleShareLink = () => {
+    if (!laudo) return;
+    const link = `${window.location.origin}/laudo/${laudo.id}`;
+    const texto = `Olá! Segue o Laudo de Revisão do equipamento *${laudo.fabricaModelo}* (S/N: ${laudo.numeroSerie}) referente a *${laudo.nomeProprietario}*.%0AConsulte o laudo completo: ${link}`;
+
+    // Usa a Web Share API nativa (funciona no iOS e Android — abre menu do sistema)
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({
+        title: `Laudo ${laudo.numeroLaudo} — ${laudo.nomeProprietario}`,
+        text: `Laudo de Revisão do equipamento ${laudo.fabricaModelo} de ${laudo.nomeProprietario}.`,
+        url: link,
+      }).catch(() => {}); // ignora se o usuário cancelar
+    } else {
+      // Fallback para computadores: abre o WhatsApp Web
+      window.open(`https://wa.me/?text=${texto}`, '_blank');
     }
   };
 
@@ -103,6 +126,7 @@ export default function LaudoDetailScreen() {
     <>
       <Stack.Screen
         options={{
+          headerShown: !printHtml,
           title: laudo.numeroLaudo,
           headerLeft: () => (
             <TouchableOpacity
@@ -216,7 +240,8 @@ export default function LaudoDetailScreen() {
           <InfoRow label="Distorcedor" value={laudo.linhasDistorcedor} />
           <InfoRow label="Carga nas Linhas" value={laudo.linhasCarga} />
           <InfoRow label="Troca de Linhas" value={laudo.linhasTroca} />
-          <InfoRow label="Simetria e Trimagem" value={laudo.linhasSimetriaTrimagem} />
+          <InfoRow label="Simetria" value={laudo.linhasSimetria} />
+          <InfoRow label="Trimagem" value={laudo.linhasTrimagem} />
         </InfoCard>
 
         <InfoCard title="🛡️ Checagem do Tecido">
@@ -227,7 +252,7 @@ export default function LaudoDetailScreen() {
           <View style={styles.divider} />
           <InfoRow label="Teste de Resistência" value={laudo.tecidoTesteResistencia} />
           <InfoRow label="Porosidade Bordo Ataque" value={laudo.tecidoPorosidadeBordoAtaque} />
-          <InfoRow label="Porosidade Intradorso" value={laudo.tecidoPorosidadeIntradorso} />
+
           <InfoRow label="Porosidade Extradorso" value={laudo.tecidoPorosidadeExtradorso} />
           <View style={styles.divider} />
           <InfoRow label="Conforme Fabricante" value={laudo.parecerConformeFabricante} />
@@ -245,8 +270,17 @@ export default function LaudoDetailScreen() {
           </Text>
         </InfoCard>
 
-        {/* Ações PDF */}
+        {/* Ações */}
         <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.shareLinkBtn]}
+            onPress={handleShareLink}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="share-social-outline" size={20} color="#fff" />
+            <Text style={styles.actionBtnText}>Compartilhar Link</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.actionBtn, styles.shareBtn]}
             onPress={handleShare}
@@ -259,11 +293,36 @@ export default function LaudoDetailScreen() {
               <Ionicons name="print-outline" size={20} color="#fff" />
             )}
             <Text style={styles.actionBtnText}>
-              Imprimir / Salvar PDF
+              Imprimir / PDF
             </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Overlay do PDF para resolver o problema do Safari iOS PWA */}
+      {printHtml && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, backgroundColor: '#f8fafc' }}>
+          <View style={{ height: 70, backgroundColor: '#1e293b', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 }}>
+            <TouchableOpacity onPress={() => setPrintHtml(null)} style={{ paddingVertical: 12, paddingHorizontal: 16, backgroundColor: '#334155', borderRadius: 10 }}>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>⬅ Fechar PDF</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => window.print()} style={{ paddingVertical: 12, paddingHorizontal: 16, backgroundColor: '#db2777', borderRadius: 10 }}>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>🖨 Imprimir / Salvar</Text>
+            </TouchableOpacity>
+          </View>
+          {React.createElement('iframe', {
+            id: 'print-iframe',
+            srcDoc: printHtml,
+            style: { flex: 1, border: 'none', width: '100%', height: 'calc(100% - 70px)' }
+          })}
+        </View>
+      )}
+
+      {/* DOM Injection para a Impressora da Apple capturar corretamente */}
+      {printHtml && typeof document !== 'undefined' && createPortal(
+        <div id="print-root" dangerouslySetInnerHTML={{ __html: printHtml }} />,
+        document.body
+      )}
     </>
   );
 }
@@ -370,6 +429,14 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   viewPdfBtnText: { color: '#0f172a', fontSize: 14, fontWeight: '700' },
+  shareLinkBtn: {
+    backgroundColor: '#3b82f6',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
   shareBtn: {
     backgroundColor: '#db2777',
     shadowColor: '#db2777',

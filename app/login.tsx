@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     color: '#0f172a',
     height: '100%',
   },

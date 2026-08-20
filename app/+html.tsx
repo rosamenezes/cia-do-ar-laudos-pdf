@@ -43,6 +43,25 @@ export default function Root({ children }: PropsWithChildren) {
         `,
           }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+            // Bloqueia o movimento de pinça (pinch to zoom) no iOS Safari
+            document.addEventListener('gesturestart', function(e) {
+              e.preventDefault();
+            });
+            // Bloqueia o double-tap to zoom forçado via JavaScript
+            var lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+              var now = (new Date()).getTime();
+              if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+              }
+              lastTouchEnd = now;
+            }, false);
+            `,
+          }}
+        />
       </head>
       <body style={{ backgroundColor: '#f8fafc' }}>{children}</body>
     </html>

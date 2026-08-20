@@ -25,23 +25,23 @@ export default function LaudosScreen() {
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
 
-  const loadLaudos = useCallback(async () => {
+  const loadLaudos = useCallback(async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const data = await getLaudos();
       setLaudos(data);
     } catch (e) {
       console.error('Erro ao carregar laudos:', e);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   }, []);
 
-  // Recarrega ao voltar para a tela
+  // Recarrega ao voltar para a tela (silenciosamente se já tivermos dados)
   useFocusEffect(
     useCallback(() => {
-      loadLaudos();
-    }, [loadLaudos])
+      loadLaudos(laudos.length === 0);
+    }, [loadLaudos, laudos.length])
   );
 
   const handlePressLaudo = useCallback((laudo: LaudoParapente) => {
@@ -58,11 +58,11 @@ export default function LaudosScreen() {
         ) {
           setLoading(true);
           deleteLaudo(id)
-            .then(loadLaudos)
+            .then(() => loadLaudos(false))
             .catch(() => {
               window.alert('Não foi possível excluir o laudo.');
-              setLoading(false);
-            });
+            })
+            .finally(() => setLoading(false));
         }
         return;
       }
@@ -79,9 +79,10 @@ export default function LaudosScreen() {
               try {
                 setLoading(true);
                 await deleteLaudo(id);
-                await loadLaudos();
+                await loadLaudos(false);
               } catch (error) {
                 Alert.alert('Erro', 'Não foi possível excluir o laudo.');
+              } finally {
                 setLoading(false);
               }
             },
@@ -132,7 +133,8 @@ export default function LaudosScreen() {
           onPress={async () => {
             setLoading(true);
             await seedMockLaudos();
-            await loadLaudos();
+            await loadLaudos(false);
+            setLoading(false);
           }}
         >
           <Ionicons name="sparkles-outline" size={18} color="#fff" />

@@ -76,7 +76,7 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       position: relative;
       width: 100%;
       max-width: 210mm;
-      min-height: 292mm; /* Garante que a página ocupe a folha A4 inteira */
+      min-height: 240mm; /* Ajustado para 240mm para caber na área de impressão segura do iOS */
       margin: 0 auto;
       padding: 5mm 10mm 15mm 10mm;
       box-sizing: border-box;
@@ -236,7 +236,7 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
     }
     .foto-body img {
       max-width: 100%;
-      max-height: 280px;
+      max-height: 250px;
       width: auto;
       height: auto;
       object-fit: contain;

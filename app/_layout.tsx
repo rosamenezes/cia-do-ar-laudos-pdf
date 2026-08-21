@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeAreaProvider, SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
+import { ThemeProvider, useAppTheme } from '../src/contexts/ThemeContext';
 import React, { useMemo } from 'react';
 
 // Mantém a tela de carregamento visível enquanto as fontes baixam
@@ -29,6 +30,7 @@ function SafeInsetsOverride({ children }: { children: React.ReactNode }) {
 function AppContent() {
   const { isAuthenticated, loading } = useAuth();
   const segments = useSegments();
+  const { colors } = useAppTheme();
 
   useEffect(() => {
     if (loading) return;
@@ -36,10 +38,8 @@ function AppContent() {
     const inAuthGroup = segments[0] === 'login';
 
     if (!isAuthenticated && !inAuthGroup) {
-      // Tenta acessar página protegida sem estar logado -> Login
       router.replace('/login');
     } else if (isAuthenticated && inAuthGroup) {
-      // Tenta acessar página de login já estando logado -> Home
       router.replace('/');
     }
   }, [loading, isAuthenticated, segments]);
@@ -49,7 +49,7 @@ function AppContent() {
       <View
         style={{
           flex: 1,
-          backgroundColor: '#f1f5f9',
+          backgroundColor: colors.background,
           justifyContent: 'center',
           alignItems: 'center',
           gap: 16,
@@ -60,20 +60,20 @@ function AppContent() {
           style={{ width: 80, height: 80 }}
           resizeMode="contain"
         />
-        <ActivityIndicator size="large" color="#db2777" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-      <StatusBar style="dark" backgroundColor="#ffffff" />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style="dark" backgroundColor={colors.card} />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: '#ffffff' },
-          headerTintColor: '#1e293b',
+          headerStyle: { backgroundColor: colors.card },
+          headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '700' },
-          contentStyle: { backgroundColor: '#f8fafc' },
+          contentStyle: { backgroundColor: colors.background },
           headerShadowVisible: true,
         }}
       >
@@ -96,7 +96,7 @@ function AppContent() {
                   resizeMode="contain"
                 />
                 <Text
-                  style={{ fontSize: 20, fontWeight: '800', color: '#0f172a', letterSpacing: -0.3 }}
+                  style={{ fontSize: 20, fontWeight: '800', color: colors.text, letterSpacing: -0.3 }}
                 >
                   Cia. do Ar
                 </Text>
@@ -108,38 +108,15 @@ function AppContent() {
                 style={{ padding: 8, marginRight: 4 }}
                 activeOpacity={0.7}
               >
-                <Ionicons name="person-circle-outline" size={28} color="#64748b" />
+                <Ionicons name="person-circle-outline" size={28} color={colors.textSecondary} />
               </TouchableOpacity>
             ),
           }}
         />
-        <Stack.Screen
-          name="novo"
-          options={{
-            title: 'Novo Laudo',
-          }}
-        />
-        <Stack.Screen
-          name="laudo/[id]"
-          options={{
-            title: 'Laudo',
-            presentation: 'card',
-          }}
-        />
-        <Stack.Screen
-          name="laudo/[id]/editar"
-          options={{
-            title: 'Editar Laudo',
-            presentation: 'card',
-          }}
-        />
-        <Stack.Screen
-          name="perfil"
-          options={{
-            title: 'Perfil',
-            presentation: 'card',
-          }}
-        />
+        <Stack.Screen name="novo" options={{ title: 'Novo Laudo' }} />
+        <Stack.Screen name="laudo/[id]" options={{ title: 'Laudo', presentation: 'card' }} />
+        <Stack.Screen name="laudo/[id]/editar" options={{ title: 'Editar Laudo', presentation: 'card' }} />
+        <Stack.Screen name="perfil" options={{ title: 'Perfil', presentation: 'card' }} />
       </Stack>
     </View>
   );
@@ -174,7 +151,9 @@ export default function RootLayout() {
     >
       <SafeInsetsOverride>
         <AuthProvider>
-          <AppContent />
+          <ThemeProvider>
+            <AppContent />
+          </ThemeProvider>
         </AuthProvider>
       </SafeInsetsOverride>
     </SafeAreaProvider>

@@ -1,13 +1,15 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, Platform, Switch } from 'react-native';
 import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../src/contexts/AuthContext';
 import { logout } from '../src/services/authService';
+import { useAppTheme } from '../src/contexts/ThemeContext';
 
 export default function PerfilScreen() {
   const { user } = useAuth();
+  const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
 
   const handleLogout = () => {
@@ -16,62 +18,72 @@ export default function PerfilScreen() {
     }
   };
 
+  
+  // Dynamic styles
+  const dynamicStyles = {
+    container: { backgroundColor: colors.background },
+    card: { backgroundColor: colors.card, shadowColor: '#000' },
+    text: { color: colors.text },
+    textSec: { color: colors.textSecondary },
+    divider: { backgroundColor: colors.divider },
+    logoutBtn: { backgroundColor: colors.card, borderColor: '#fecaca' }
+  };
+
   return (
     <>
       <Stack.Screen options={{ title: 'Perfil' }} />
       <ScrollView
-        style={styles.container}
+        style={[styles.container, dynamicStyles.container]}
         contentContainerStyle={[
           styles.content,
           { paddingBottom: Platform.OS === 'web' ? 40 : Math.max(40, insets.bottom + 20) },
         ]}
       >
-        {/* Avatar e informações */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, dynamicStyles.card]}>
           <View style={styles.avatarCircle}>
             <Ionicons name="person" size={40} color="#db2777" />
           </View>
-          <Text style={styles.userName}>{user?.displayName || 'Usuário'}</Text>
-          <Text style={styles.userEmail}>{user?.email || '—'}</Text>
+          <Text style={[styles.userName, dynamicStyles.text]}>{user?.displayName || 'Usuário'}</Text>
+          <Text style={[styles.userEmail, dynamicStyles.textSec]}>{user?.email || '—'}</Text>
         </View>
 
-        {/* Info do App */}
-        <View style={styles.infoCard}>
+        <View style={[styles.infoCard, dynamicStyles.card]}>
+          
           <View style={styles.infoRow}>
-            <Ionicons name="shield-checkmark-outline" size={20} color="#22c55e" />
+            <Ionicons name="shield-checkmark-outline" size={20} color={colors.success} />
             <View style={styles.infoTextGroup}>
-              <Text style={styles.infoLabel}>Status</Text>
-              <Text style={styles.infoValue}>Autenticado</Text>
+              <Text style={[styles.infoLabel, dynamicStyles.textSec]}>Status</Text>
+              <Text style={[styles.infoValue, dynamicStyles.text]}>Autenticado</Text>
             </View>
           </View>
-          <View style={styles.divider} />
+          <View style={[styles.divider, dynamicStyles.divider]} />
           <View style={styles.infoRow}>
             <Ionicons name="business-outline" size={20} color="#3b82f6" />
             <View style={styles.infoTextGroup}>
-              <Text style={styles.infoLabel}>Organização</Text>
-              <Text style={styles.infoValue}>Cia. do Ar</Text>
+              <Text style={[styles.infoLabel, dynamicStyles.textSec]}>Organização</Text>
+              <Text style={[styles.infoValue, dynamicStyles.text]}>Cia. do Ar</Text>
             </View>
           </View>
-          <View style={styles.divider} />
+          <View style={[styles.divider, dynamicStyles.divider]} />
           <View style={styles.infoRow}>
-            <Ionicons name="information-circle-outline" size={20} color="#64748b" />
+            <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
             <View style={styles.infoTextGroup}>
-              <Text style={styles.infoLabel}>Versão do App</Text>
-              <Text style={styles.infoValue}>1.0.0</Text>
+              <Text style={[styles.infoLabel, dynamicStyles.textSec]}>Versão do App</Text>
+              <Text style={[styles.infoValue, dynamicStyles.text]}>1.0.0</Text>
             </View>
           </View>
         </View>
 
-        {/* Botão de Logout */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <Ionicons name="log-out-outline" size={20} color="#dc2626" />
-          <Text style={styles.logoutBtnText}>Sair da Conta</Text>
+        <TouchableOpacity style={[styles.logoutBtn, dynamicStyles.logoutBtn]} onPress={handleLogout} activeOpacity={0.8}>
+          <Ionicons name="log-out-outline" size={20} color={colors.danger} />
+          <Text style={[styles.logoutBtnText, { color: colors.danger }]}>Sair da Conta</Text>
         </TouchableOpacity>
 
         <Text style={styles.footerText}>Cia. do Ar — Sistema de Laudos de Parapente</Text>
       </ScrollView>
     </>
   );
+
 }
 
 const styles = StyleSheet.create({

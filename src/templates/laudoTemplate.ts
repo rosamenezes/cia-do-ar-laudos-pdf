@@ -1,7 +1,117 @@
-import { LaudoParapente } from '../types/laudo';
+import { LaudoParapente, PorosityMap } from '../types/laudo';
 import { PARECER_GERAL_LABELS, PARECER_GERAL_COLORS } from '../types/constants';
 import { LOGO_BASE64 } from './logoAsset';
 import { imageToBase64 } from '../services/imageService';
+
+
+function renderPorosidadeMap(porosidade: PorosityMap | undefined) {
+  if (!porosidade) return '';
+
+  const activeExt = Object.entries(porosidade.extradorso || {}).filter(([_, v]) => v.selected);
+  const activeInt = Object.entries(porosidade.intradorso || {}).filter(([_, v]) => v.selected);
+  
+  if (activeExt.length === 0 && activeInt.length === 0) return '';
+
+  const renderDot = (cx: string, cy: number, isSelected: boolean) => {
+    if (!isSelected) return '';
+    return `
+      <circle cx="${cx}" cy="${cy}" r="6" fill="#ef4444" stroke="#7f1d1d" stroke-width="1.5" />
+      <circle cx="${cx}" cy="${cy}" r="2" fill="#ffffff" />
+    `;
+  };
+
+  // Generate vertical lines for cells
+  let lines = '';
+  for (let i = 0; i < 30; i++) {
+    lines += `<line x1="${25 + i * 11.6}" y1="0" x2="${25 + i * 11.6}" y2="100" stroke="#cbd5e1" stroke-width="1" />`;
+  }
+
+  let html = `<div class="section-title">📊 MEDIÇÃO DE POROSIDADE</div>`;
+
+  const wingPath = "M 30 75 C 10 75, 10 55, 30 55 Q 200 -5 370 55 C 390 55, 390 75, 370 75 Q 200 65 30 75 Z";
+  const shadowPath = "M 30 78 C 10 78, 10 58, 30 58 Q 200 -2 370 58 C 390 58, 390 78, 370 78 Q 200 68 30 78 Z";
+
+  // SVG Extradorso
+  html += `
+    <div style="margin-bottom: 24px;">
+      <div style="font-size: 13px; font-weight: 800; color: #1e293b; text-align: center; margin-bottom: 12px; letter-spacing: 0.5px;">EXTRADORSO</div>
+      <div style="width: 100%; height: 120px; position: relative;">
+        <svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="none">
+          <defs>
+            <clipPath id="wingClipExtPDF">
+              <path d="${wingPath}" />
+            </clipPath>
+          </defs>
+          <path d="${shadowPath}" fill="#e2e8f0" />
+          <path d="${wingPath}" fill="#ffffff" />
+          <g clip-path="url(#wingClipExtPDF)">${lines}</g>
+          <path d="${wingPath}" fill="none" stroke="#334155" stroke-width="2.5" stroke-linejoin="round" />
+          
+          ${renderDot('20%', 58, porosidade.extradorso.pontaEsquerda?.selected)}
+          ${renderDot('40%', 36, porosidade.extradorso.meioEsquerda?.selected)}
+          ${renderDot('60%', 36, porosidade.extradorso.meioDireita?.selected)}
+          ${renderDot('80%', 58, porosidade.extradorso.pontaDireita?.selected)}
+        </svg>
+      </div>
+    </div>
+  `;
+
+  // SVG Intradorso
+  html += `
+    <div style="margin-bottom: 32px;">
+      <div style="font-size: 13px; font-weight: 800; color: #1e293b; text-align: center; margin-bottom: 12px; letter-spacing: 0.5px;">INTRADORSO</div>
+      <div style="width: 100%; height: 120px; position: relative;">
+        <svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="none">
+          <defs>
+            <clipPath id="wingClipIntPDF">
+              <path d="${wingPath}" />
+            </clipPath>
+          </defs>
+          <path d="${shadowPath}" fill="#e2e8f0" />
+          <path d="${wingPath}" fill="#f1f5f9" />
+          <g clip-path="url(#wingClipIntPDF)">${lines}</g>
+          <path d="${wingPath}" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" />
+          
+          ${renderDot('25%', 50, porosidade.intradorso.esquerda?.selected)}
+          ${renderDot('50%', 28, porosidade.intradorso.centro?.selected)}
+          ${renderDot('75%', 50, porosidade.intradorso.direita?.selected)}
+        </svg>
+      </div>
+    </div>
+  `;
+
+  // Tabela de Resultados
+  html += `
+    <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+      <tr>
+        <th style="background-color: #f1f5f9; padding: 12px 16px; font-size: 11px; font-weight: 800; color: #334155; text-transform: uppercase; border: 1px solid #cbd5e1; width: 60%; text-align: left;">Ponto Medido</th>
+        <th style="background-color: #f1f5f9; padding: 12px 16px; font-size: 11px; font-weight: 800; color: #334155; text-transform: uppercase; border: 1px solid #cbd5e1; width: 40%; text-align: center;">Resultado (Segundos)</th>
+      </tr>
+  `;
+
+  const exLabels: any = { pontaEsquerda: 'Extradorso: Ponta Esq.', meioEsquerda: 'Extradorso: Meio Esq.', meioDireita: 'Extradorso: Meio Dir.', pontaDireita: 'Extradorso: Ponta Dir.' };
+  activeExt.forEach(([k, v]) => {
+    html += `
+      <tr>
+        <td style="padding: 12px 16px; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 700; color: #1e293b; text-align: left;">${exLabels[k]}</td>
+        <td style="padding: 12px 16px; border: 1px solid #e2e8f0; font-size: 13px; font-weight: 800; color: #db2777; text-align: center;">${v.value || '-'}</td>
+      </tr>
+    `;
+  });
+
+  const inLabels: any = { esquerda: 'Intradorso: Esquerda', centro: 'Intradorso: Centro', direita: 'Intradorso: Direita' };
+  activeInt.forEach(([k, v]) => {
+    html += `
+      <tr>
+        <td style="padding: 12px 16px; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 700; color: #1e293b; text-align: left;">${inLabels[k]}</td>
+        <td style="padding: 12px 16px; border: 1px solid #e2e8f0; font-size: 13px; font-weight: 800; color: #db2777; text-align: center;">${v.value || '-'}</td>
+      </tr>
+    `;
+  });
+
+  html += `</table>`;
+  return html;
+}
 
 export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> {
   let fotoBase64 = '';
@@ -488,19 +598,32 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
         <tr><th>Teste de Resistência</th><td>
           ${renderStatusBadge(laudo.tecidoTesteResistencia)}
         </td></tr>
-        <tr><th>Porosidade Bordo Ataque</th><td>
-          ${renderStatusBadge(laudo.tecidoPorosidadeBordoAtaque)}
-        </td></tr>
-        <tr><th>Porosidade Extradorso</th><td>
-          ${renderStatusBadge(laudo.tecidoPorosidadeExtradorso)}
-        </td></tr>
+        
       </table>
 
     </div>
   </div>
 
+  
   <!-- ════════════════════════════════════════
-       PÁGINA 3 — Parecer Geral + Rodapé
+       PÁGINA 3 — Medição de Porosidade
+       ════════════════════════════════════════ -->
+  ${laudo.porosidade ? `
+  <div class="pdf-page page-break">
+    <div class="global-watermark">
+      <img src="${LOGO_BASE64}" style="width: 100%; height: auto; display: block;" />
+    </div>
+    <div class="page-content">
+      <div class="page-subheader">
+        <span class="page-subheader-title">Laudo de Revisão</span>
+      </div>
+      ${renderPorosidadeMap(laudo.porosidade)}
+    </div>
+  </div>
+  ` : ''}
+
+  <!-- ════════════════════════════════════════
+       PÁGINA 4 — Parecer Geral + Rodapé
        ════════════════════════════════════════ -->
   <div class="pdf-page page-break">
     <!-- MARCA D'ÁGUA INDIVIDUAL DA PÁGINA -->

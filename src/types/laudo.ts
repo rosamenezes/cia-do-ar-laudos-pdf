@@ -3,6 +3,25 @@ export type StatusCheck = 'Ok' | 'Não Ok';
 export type ParecerGeral =
   'OTIMO' | 'MUITO_BOM' | 'USADO_BOM_ESTADO' | 'USADO_RAZOAVEL' | 'MUITO_USADO' | 'CONDENADO';
 
+export interface PorosityPoint {
+  selected: boolean;
+  value: string;
+}
+
+export interface PorosityMap {
+  extradorso: {
+    pontaEsquerda: PorosityPoint;
+    meioEsquerda: PorosityPoint;
+    meioDireita: PorosityPoint;
+    pontaDireita: PorosityPoint;
+  };
+  intradorso: {
+    esquerda: PorosityPoint;
+    centro: PorosityPoint;
+    direita: PorosityPoint;
+  };
+}
+
 export interface LaudoParapente {
   id: string;
   // Metadados do Laudo
@@ -64,11 +83,14 @@ export interface LaudoParapente {
   tecidoCheckExtradorsoObs: string;
 
   tecidoTesteResistencia: string; // Texto livre para "Correto" ou valor
-  tecidoPorosidadeBordoAtaque: string; // Texto livre para "Correto" ou valor
-  tecidoPorosidadeExtradorso: string;
+  tecidoPorosidadeBordoAtaque?: string; // (Depreciado)
+  tecidoPorosidadeExtradorso?: string; // (Depreciado)
 
   parecerConformeFabricante: string; // Texto livre (ex: "Correto")
   observacoes: string; // Observações gerais
+
+  // Mapa de Porosidade (Novo Formato Visual)
+  porosidade?: PorosityMap;
 
   // 5. Parecer Geral da Vela
   parecerGeral: ParecerGeral;

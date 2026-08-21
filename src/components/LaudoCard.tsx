@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '../contexts/ThemeContext';
 import { LaudoParapente } from '../types/laudo';
 import { PARECER_GERAL_SHORT_LABELS, PARECER_GERAL_COLORS } from '../types/constants';
 

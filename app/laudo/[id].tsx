@@ -357,7 +357,7 @@ function InfoCard({ title, children }: { title: string; children: React.ReactNod
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({ label, value }: { label: string; value?: string }) {
   const isBad = value === 'Não Ok' || value === 'Incorreto' || value === 'Reprovado';
   return (
     <View style={styles.infoRow}>

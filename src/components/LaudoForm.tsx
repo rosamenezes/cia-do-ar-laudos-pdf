@@ -16,6 +16,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Ionicons } from '@expo/vector-icons';
 import { PhotoCapture } from './PhotoCapture';
+import PorosityMapSelector from './PorosityMapSelector';
 import { ParecerGeral, StatusCheck, LaudoFormData } from '../types/laudo';
 import {
   STATUS_CHECK_OPTIONS,
@@ -74,8 +75,8 @@ const laudoSchema = z.object({
   tecidoCheckExtradorsoObs: z.string().optional(),
 
   tecidoTesteResistencia: z.string().min(1, 'Obrigatório'),
-  tecidoPorosidadeBordoAtaque: z.string().min(1, 'Obrigatório'),
-  tecidoPorosidadeExtradorso: z.string().min(1, 'Obrigatório'),
+  // Porosidade visual
+  porosidade: z.any().optional(),
 
   parecerConformeFabricante: z.string().min(1, 'Obrigatório'),
   observacoes: z.string(),
@@ -452,8 +453,7 @@ export function LaudoForm({
       tecidoCheckExtradorsoObs: '',
 
       tecidoTesteResistencia: 'Correto',
-      tecidoPorosidadeBordoAtaque: 'Correto',
-      tecidoPorosidadeExtradorso: 'Correto',
+      // Novos campos de porosidade visual não precisam de string 'Correto'
       parecerConformeFabricante: 'Correto',
       observacoes: '',
       parecerGeral: 'OTIMO',
@@ -710,7 +710,7 @@ export function LaudoForm({
         ))}
       </View>
 
-      <Text style={styles.subTitle}>Testes & Porosidade</Text>
+      <Text style={styles.subTitle}>Testes & Resistência</Text>
       <View style={styles.row}>
         <View style={styles.flex1}>
           <InputField
@@ -720,25 +720,17 @@ export function LaudoForm({
             error={errors.tecidoTesteResistencia?.message}
           />
         </View>
-        <View style={styles.flex1}>
-          <InputField
-            control={control}
-            name="tecidoPorosidadeBordoAtaque"
-            label="Porosidade B. Ataque"
-            error={errors.tecidoPorosidadeBordoAtaque?.message}
-          />
-        </View>
       </View>
-      <View style={styles.row}>
-        <View style={styles.flex1}>
-          <InputField
-            control={control}
-            name="tecidoPorosidadeExtradorso"
-            label="Porosidade Extradorso"
-            error={errors.tecidoPorosidadeExtradorso?.message}
-          />
-        </View>
-      </View>
+      
+      <SectionHeader icon="analytics-outline" title="5. Medição de Porosidade" />
+      <Controller
+        control={control}
+        name="porosidade"
+        render={({ field: { value, onChange } }) => (
+          <PorosityMapSelector value={value} onChange={onChange} />
+        )}
+      />
+      
 
       <InputField
         control={control}

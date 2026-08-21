@@ -14,12 +14,14 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '../src/contexts/ThemeContext';
 import { LaudoParapente } from '../src/types/laudo';
 import { getLaudos, seedMockLaudos, deleteLaudo } from '../src/services/database';
 import { LaudoCard } from '../src/components/LaudoCard';
 import { SearchBar } from '../src/components/SearchBar';
 
 export default function LaudosScreen() {
+  const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
   const [laudos, setLaudos] = useState<LaudoParapente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,8 +112,8 @@ export default function LaudosScreen() {
         <View style={styles.emptyIcon}>
           <Ionicons name="documents-outline" size={56} color="#94a3b8" />
         </View>
-        <Text style={styles.emptyTitle}>Nenhum laudo ainda</Text>
-        <Text style={styles.emptySubtitle}>
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>Nenhum laudo ainda</Text>
+        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
           Toque em "Novo" para criar seu primeiro laudo de inspeção
         </Text>
         <TouchableOpacity
@@ -131,7 +133,7 @@ export default function LaudosScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Busca */}
       <View style={styles.searchArea}>
         <SearchBar value={searchText} onChangeText={setSearchText} />

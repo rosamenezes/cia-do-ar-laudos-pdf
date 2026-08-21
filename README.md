@@ -1,10 +1,10 @@
-# Cia do Ar - Sistema Especializado de Laudos Técnicos 🪂
+# Cia do Ar - Sistema Especializado de Laudos Técnicos 
 
 Um sistema de missão crítica (PWA e Mobile) desenvolvido com **Expo** e **React Native** para a digitalização completa do processo de criação, gestão e geração de laudos técnicos para inspeção de parapentes. Este aplicativo transforma processos complexos baseados em papel em um fluxo totalmente digital e sincronizado na nuvem, culminando em relatórios PDF ricos em detalhes e altamente profissionais, prontos para serem enviados aos pilotos.
 
 ---
 
-## 🚀 Arquitetura e Principais Funcionalidades
+## Arquitetura e Principais Funcionalidades
 
 ### 1. Autenticação e Segurança (Firebase Auth)
 O sistema é protegido nativamente com integração ao **Firebase Authentication**.
@@ -43,7 +43,7 @@ O motor do fluxo. Um laudo incompleto nunca é gerado.
 
 ---
 
-## 🛠 Stack Tecnológica Completa
+##  Stack Tecnológica Completa
 
 | Categoria | Tecnologias Empregadas |
 | :--- | :--- |
@@ -57,7 +57,7 @@ O motor do fluxo. Um laudo incompleto nunca é gerado.
 
 ---
 
-## 📂 Visão Detalhada da Árvore do Projeto
+## Visão Detalhada da Árvore do Projeto
 
 ```text
 CiadoArLaudos/
@@ -96,7 +96,7 @@ CiadoArLaudos/
 
 ---
 
-## 💻 Guia de Inicialização do Ambiente
+## Guia de Inicialização do Ambiente
 
 1. **Faça o clone do repositório** e acesse a pasta raiz:
    ```bash
@@ -130,7 +130,7 @@ CiadoArLaudos/
 
 ---
 
-## 📦 Deploy Contínuo (Firebase Hosting PWA)
+## Deploy Contínuo (Firebase Hosting PWA)
 
 A entrega da aplicação é focada primeiramente na web pela facilidade do suporte nativo da api global Print. Para subir atualizações para os técnicos, compile o código estático utilizando o Metro para Web e suba via Hosting:
 

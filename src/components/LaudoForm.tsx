@@ -345,6 +345,36 @@ function DatePickerField({
     }
   };
 
+  if (Platform.OS === 'web') {
+    // Usamos createElement para burlar tipagem do react-native-web de forma limpa
+    const React = require('react');
+    const inputElement = React.createElement('input', {
+      type: 'date',
+      value: value || '',
+      onChange: (e: any) => onChange(e.target.value),
+      style: {
+        width: '100%',
+        padding: '12px',
+        borderRadius: '8px',
+        border: `1px solid ${error ? '#ef4444' : '#e2e8f0'}`,
+        fontSize: '15px',
+        color: '#0f172a',
+        backgroundColor: '#ffffff',
+        outline: 'none',
+        fontFamily: 'inherit',
+        boxSizing: 'border-box'
+      }
+    });
+
+    return (
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>{label}</Text>
+        {inputElement}
+        {error && <Text style={styles.errorText}>⚠ {error}</Text>}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.label}>{label}</Text>
@@ -363,19 +393,18 @@ function DatePickerField({
       {show &&
         (Platform.OS === 'ios' ? (
           <Modal
-            transparent
-            animationType="fade"
+            transparent={true}
+            animationType="slide"
             visible={show}
             onRequestClose={() => setShow(false)}
           >
             <TouchableOpacity
-              style={styles.modalOverlay}
+              style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' }}
               activeOpacity={1}
               onPress={() => setShow(false)}
             >
-              <View style={styles.iosDatePickerContainer} onStartShouldSetResponder={() => true}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Selecione a Data</Text>
+              <View style={{ backgroundColor: 'white', paddingBottom: 20 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', padding: 16 }}>
                   <TouchableOpacity onPress={() => setShow(false)}>
                     <Text style={{ color: '#db2777', fontWeight: '700', fontSize: 15 }}>
                       Concluir
@@ -388,8 +417,6 @@ function DatePickerField({
                   display="spinner"
                   textColor="#1e293b"
                   onChange={handleChange}
-                  locale="pt-BR"
-                  themeVariant="light"
                 />
               </View>
             </TouchableOpacity>

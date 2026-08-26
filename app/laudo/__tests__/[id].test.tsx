@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { render, waitFor, fireEvent, act } from '@testing-library/react-native';
 import LaudoDetailScreen from '../[id]';
 import * as database from '../../../src/services/database';
 
@@ -9,9 +9,12 @@ jest.mock('../../../src/services/database', () => ({
 }));
 
 jest.mock('../../../src/services/pdfGenerator', () => ({
-  generateAndSavePdf: jest.fn().mockResolvedValue('file:///mock/laudo.pdf'),
-  generateAndShare: jest.fn().mockResolvedValue('file:///mock/laudo.pdf'),
+  generatePdfHtml: jest.fn().mockResolvedValue('<html><body>laudo</body></html>'),
 }));
+
+// A tela injeta o HTML de impressão no body por um portal, que não existe no
+// renderer do react-native.
+jest.mock('react-dom', () => ({ createPortal: () => null }));
 
 describe('LaudoDetailScreen', () => {
   const mockLaudo = {
@@ -82,5 +85,69 @@ describe('LaudoDetailScreen', () => {
     await waitFor(() => {
       expect(getByText('Laudo não encontrado')).toBeTruthy();
     });
+  });
+
+  /**
+   * Fora do app instalado o botão TEM que continuar imprimindo. Foi trocar isso
+   * sem querer que já fez o laudo sair em branco em todos os aparelhos.
+   */
+  it('deve imprimir, e não abrir aba, quando não é o app instalado', async () => {
+    (database.getLaudoById as jest.Mock).mockResolvedValueOnce(mockLaudo);
+
+    const print = jest.fn();
+    const open = jest.fn();
+    const g = globalThis as any;
+    g.window = Object.assign(g.window ?? {}, {
+      print,
+      open,
+      matchMedia: () => ({ matches: false }),
+      navigator: {},
+    });
+
+    const { getByText } = render(<LaudoDetailScreen />);
+    await waitFor(() => getByText('Mariana Lima'));
+
+    await act(async () => {
+      fireEvent.press(getByText('Gerar PDF (Compartilhar / Salvar)'));
+    });
+    await waitFor(() => getByText('Compartilhar / Salvar'));
+
+    await act(async () => {
+      fireEvent.press(getByText('Compartilhar / Salvar'));
+    });
+
+    expect(print).toHaveBeenCalledTimes(1);
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it('deve abrir o laudo numa aba quando roda como app instalado', async () => {
+    (database.getLaudoById as jest.Mock).mockResolvedValueOnce(mockLaudo);
+
+    const print = jest.fn();
+    const doc = { write: jest.fn(), close: jest.fn() };
+    const open = jest.fn().mockReturnValue({ document: doc });
+    const g = globalThis as any;
+    g.window = Object.assign(g.window ?? {}, {
+      print,
+      open,
+      matchMedia: () => ({ matches: true }),
+      navigator: {},
+    });
+
+    const { getByText } = render(<LaudoDetailScreen />);
+    await waitFor(() => getByText('Mariana Lima'));
+
+    await act(async () => {
+      fireEvent.press(getByText('Gerar PDF (Compartilhar / Salvar)'));
+    });
+    await waitFor(() => getByText('Compartilhar / Salvar'));
+
+    await act(async () => {
+      fireEvent.press(getByText('Compartilhar / Salvar'));
+    });
+
+    expect(open).toHaveBeenCalledWith('', '_blank');
+    expect(doc.write).toHaveBeenCalledWith('<html><body>laudo</body></html>');
+    expect(print).not.toHaveBeenCalled();
   });
 });

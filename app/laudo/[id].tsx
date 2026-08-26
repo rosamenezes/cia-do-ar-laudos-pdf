@@ -19,7 +19,7 @@ import { getLaudoById, deleteLaudo } from '../../src/services/database';
 import { confirmar, notificar } from '../../src/utils/feedback';
 import { cidadeDoLaudo, estadoDoLaudo } from '../../src/utils/localidade';
 import { medicoesDePorosidade } from '../../src/utils/porosidade';
-import { generatePdfHtml, generatePdfBlob } from '../../src/services/pdfGenerator';
+import { generatePdfHtml } from '../../src/services/pdfGenerator';
 import {
   PARECER_GERAL_LABELS,
   PARECER_GERAL_COLORS,
@@ -33,6 +33,21 @@ function formatDate(iso: string): string {
 }
 
 const GOOD_PARECERES = new Set(['OTIMO', 'MUITO_BOM', 'USADO_BOM_ESTADO']);
+
+/**
+ * O app foi instalado na tela de início (iOS) ou aberto como app instalado?
+ *
+ * É a única situação em que `window.print()` não serve: o iOS ignora a chamada
+ * sem erro nenhum e o botão fica morto. No Safari com barra de endereço e no
+ * desktop a impressão funciona, então lá nada muda.
+ */
+function ehAppInstalado(): boolean {
+  if (typeof window === 'undefined') return false;
+  const porMedia = window.matchMedia?.('(display-mode: standalone)')?.matches === true;
+  // `navigator.standalone` é a forma antiga, e é o que responde em iOS mais velho
+  const porNavigator = (window.navigator as any)?.standalone === true;
+  return porMedia || porNavigator;
+}
 
 export default function LaudoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -70,6 +85,34 @@ export default function LaudoDetailScreen() {
     } finally {
       setGeneratingPdf(false);
     }
+  };
+
+  /**
+   * Desktop e Safari em aba: `window.print()`, exatamente como sempre foi.
+   *
+   * App instalado na tela de início: o print é ignorado pelo iOS, então o mesmo
+   * HTML do laudo é aberto numa aba real do Safari, onde o Compartilhar do
+   * sistema existe de novo. Reaproveitar o HTML evita rasterizar as fotos em
+   * canvas — o bucket do Storage não libera CORS, e elas sairiam em branco.
+   */
+  const handleCompartilhar = () => {
+    if (!ehAppInstalado()) {
+      window.print();
+      return;
+    }
+
+    // `window.open` precisa vir direto do toque, sem await antes, senão o iOS
+    // trata como pop-up e bloqueia.
+    const aba = window.open('', '_blank');
+    if (!aba) {
+      notificar(
+        'Abra pelo Safari para salvar',
+        'O iPhone bloqueou a nova aba. Abra este laudo no Safari e use Compartilhar.'
+      );
+      return;
+    }
+    aba.document.write(printHtml ?? '');
+    aba.document.close();
   };
 
   const handleDelete = async () => {
@@ -343,7 +386,7 @@ export default function LaudoDetailScreen() {
                 <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>⬅ Fechar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => window.print()}
+                onPress={handleCompartilhar}
                 style={{
                   paddingVertical: 12,
                   paddingHorizontal: 16,

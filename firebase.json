@@ -8,7 +8,37 @@
     ],
     "headers": [
       {
+        "//": "Bundles têm hash no nome: podem ficar no cache para sempre.",
+        "source": "/_expo/static/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "//": "O HTML aponta para o bundle da vez e nunca pode ficar velho.",
         "source": "**/*.@(html|json)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "//": "As rotas limpas (/, /novo, /laudo/…) servem esse mesmo HTML, mas o padrão acima não as alcança: sem extensão, não casam com *.html.",
+        "source": "**/!(*.*)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/",
         "headers": [
           {
             "key": "Cache-Control",

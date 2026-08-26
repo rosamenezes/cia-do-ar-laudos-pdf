@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { ScrollView, Alert, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LaudoForm } from '../src/components/LaudoForm';
 import { LaudoFormData, LaudoParapente } from '../src/types/laudo';
 import { saveLaudo, generateId, generateNumeroLaudo } from '../src/services/database';
+import { notificar } from '../src/utils/feedback';
 
 export default function NovoLaudoScreen() {
   const [isLoading, setIsLoading] = useState(false);
@@ -33,16 +34,12 @@ export default function NovoLaudoScreen() {
 
       await saveLaudo(laudo);
 
-      window.alert(`✅ O laudo ${laudo.numeroLaudo} foi salvo com sucesso!`);
+      notificar(`✅ O laudo ${laudo.numeroLaudo} foi salvo com sucesso!`);
       router.replace(`/laudo/${laudo.id}`);
     } catch (e: any) {
       const msg = e?.message ?? 'Erro desconhecido';
       console.error('Falha ao salvar:', e);
-      if (Platform.OS === 'web') {
-        window.alert('Erro ao salvar laudo: ' + msg);
-      } else {
-        Alert.alert('Erro', msg);
-      }
+      notificar('Erro ao salvar laudo', msg);
     } finally {
       setIsLoading(false);
     }

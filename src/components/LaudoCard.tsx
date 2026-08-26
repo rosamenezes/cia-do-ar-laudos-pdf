@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { LaudoParapente } from '../types/laudo';
+import { formatDateBR } from '../utils/date';
 import { PARECER_GERAL_SHORT_LABELS, PARECER_GERAL_COLORS } from '../types/constants';
 
 interface LaudoCardProps {
@@ -15,17 +16,7 @@ function LaudoCardComponent({ laudo, onPress, onDelete }: LaudoCardProps) {
   const resultColor = PARECER_GERAL_COLORS[laudo.parecerGeral] || '#475569';
   const resultLabel = PARECER_GERAL_SHORT_LABELS[laudo.parecerGeral] || 'Desconhecido';
 
-  const formatDate = (iso: string) => {
-    try {
-      const parts = iso.split('-');
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-      return iso;
-    } catch {
-      return iso;
-    }
-  };
+  const formatDate = (iso: string) => formatDateBR(iso);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>

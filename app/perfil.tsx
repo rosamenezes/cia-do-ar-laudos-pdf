@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../src/contexts/AuthContext';
 import { logout } from '../src/services/authService';
+import { confirmar } from '../src/utils/feedback';
 import { useAppTheme } from '../src/contexts/ThemeContext';
 
 export default function PerfilScreen() {
@@ -12,8 +13,8 @@ export default function PerfilScreen() {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
 
-  const handleLogout = () => {
-    if (window.confirm('Deseja sair da sua conta?')) {
+  const handleLogout = async () => {
+    if (await confirmar('Deseja sair da sua conta?', undefined, { rotuloConfirmar: 'Sair' })) {
       logout();
     }
   };

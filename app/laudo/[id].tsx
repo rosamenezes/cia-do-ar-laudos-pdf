@@ -14,19 +14,22 @@ import { useLocalSearchParams, router, Stack, useFocusEffect } from 'expo-router
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LaudoParapente } from '../../src/types/laudo';
+import { formatDateBR, formatMonthYearBR } from '../../src/utils/date';
 import { getLaudoById, deleteLaudo } from '../../src/services/database';
+import { confirmar, notificar } from '../../src/utils/feedback';
+import { cidadeDoLaudo, estadoDoLaudo } from '../../src/utils/localidade';
+import { medicoesDePorosidade } from '../../src/utils/porosidade';
 import { generatePdfHtml, generatePdfBlob } from '../../src/services/pdfGenerator';
 import {
   PARECER_GERAL_LABELS,
   PARECER_GERAL_COLORS,
   PARECER_GERAL_SHORT_LABELS,
+  PARECER_POROSIMETRO_LABELS,
 } from '../../src/types/constants';
 
 // Função pura fora do componente — não recriada a cada render
 function formatDate(iso: string): string {
-  if (!iso) return '-';
-  const parts = iso.split('-');
-  return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : iso;
+  return formatDateBR(iso) || '-';
 }
 
 const GOOD_PARECERES = new Set(['OTIMO', 'MUITO_BOM', 'USADO_BOM_ESTADO']);
@@ -63,25 +66,25 @@ export default function LaudoDetailScreen() {
       const html = await generatePdfHtml(laudo);
       setPrintHtml(html);
     } catch (e: any) {
-      window.alert('Erro ao processar visualização: ' + (e.message ?? ''));
+      notificar('Erro ao processar visualização', e.message ?? '');
     } finally {
       setGeneratingPdf(false);
     }
   };
 
-  const handleDelete = () => {
-    if (
-      window.confirm(
-        `Deseja excluir o laudo ${laudo?.numeroLaudo}? Esta ação não pode ser desfeita.`
-      )
-    ) {
-      deleteLaudo(laudo!.id).then(() => {
-        if (router.canGoBack()) {
-          router.back();
-        } else {
-          router.replace('/');
-        }
-      });
+  const handleDelete = async () => {
+    const ok = await confirmar(
+      'Excluir Laudo',
+      `Deseja excluir o laudo ${laudo?.numeroLaudo}? Esta ação não pode ser desfeita.`,
+      { rotuloConfirmar: 'Excluir', destrutivo: true }
+    );
+    if (!ok) return;
+
+    await deleteLaudo(laudo!.id);
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
     }
   };
 
@@ -103,6 +106,7 @@ export default function LaudoDetailScreen() {
 
   const resultColor = PARECER_GERAL_COLORS[laudo.parecerGeral];
   const resultLabel = PARECER_GERAL_SHORT_LABELS[laudo.parecerGeral];
+  const medicoes = medicoesDePorosidade(laudo.porosidade);
   const parecerIcon = GOOD_PARECERES.has(laudo.parecerGeral)
     ? 'checkmark-circle'
     : laudo.parecerGeral === 'CONDENADO'
@@ -183,29 +187,36 @@ export default function LaudoDetailScreen() {
           </View>
         </View>
 
-        {/* Foto */}
+        {/* Fotos */}
         {laudo.fotoUri && (
           <Image source={{ uri: laudo.fotoUri }} style={styles.foto} resizeMode="cover" />
+        )}
+
+        {laudo.fotoSeloUri && (
+          <View>
+            <Text style={styles.fotoLegenda}>🏷️ Selo de informações</Text>
+            <Image source={{ uri: laudo.fotoSeloUri }} style={styles.foto} resizeMode="cover" />
+          </View>
+        )}
+
+        {laudo.fotosAdicionais && laudo.fotosAdicionais.length > 0 && (
+          <InfoCard title="🔍 Fotos Complementares">
+            {laudo.fotosAdicionais.map((foto, i) => (
+              <View key={`${i}-${foto.uri.slice(-16)}`} style={styles.fotoExtraRow}>
+                <Image source={{ uri: foto.uri }} style={styles.fotoExtraThumb} resizeMode="cover" />
+                <Text style={styles.fotoExtraDesc}>
+                  {foto.descricao || `Foto ${i + 1}`}
+                </Text>
+              </View>
+            ))}
+          </InfoCard>
         )}
 
         {/* Info Cards */}
         <InfoCard title="👤 Proprietário">
           <InfoRow label="Nome" value={laudo.nomeProprietario} />
-          <InfoRow
-            label="Cidade"
-            value={
-              laudo.cidade || (laudo.cidadeEstado ? laudo.cidadeEstado.split('-')[0].trim() : '-')
-            }
-          />
-          <InfoRow
-            label="Estado (UF)"
-            value={
-              laudo.estado ||
-              (laudo.cidadeEstado && laudo.cidadeEstado.includes('-')
-                ? laudo.cidadeEstado.split('-')[1].trim()
-                : '-')
-            }
-          />
+          <InfoRow label="Cidade" value={cidadeDoLaudo(laudo)} />
+          <InfoRow label="Estado (UF)" value={estadoDoLaudo(laudo)} />
           <InfoRow label="Telefone" value={laudo.telefone} />
           <InfoRow label="Endereço" value={laudo.endereco} />
           <InfoRow label="E-mail" value={laudo.email} />
@@ -214,7 +225,7 @@ export default function LaudoDetailScreen() {
         <InfoCard title="🪂 Vela">
           <InfoRow label="Fábrica/Modelo" value={laudo.fabricaModelo} />
           <InfoRow label="Nº Série" value={laudo.numeroSerie} />
-          <InfoRow label="Fabricação" value={laudo.dataFabricacao} />
+          <InfoRow label="Fabricação" value={formatMonthYearBR(laudo.dataFabricacao)} />
           <InfoRow label="Cor Bordo Ataque" value={laudo.corBordoAtaque} />
           <InfoRow label="Cor Intradorso" value={laudo.corIntradorso} />
           <InfoRow label="Cor Extradorso" value={laudo.corExtradorso} />
@@ -242,7 +253,14 @@ export default function LaudoDetailScreen() {
 
           <InfoRow label="Porosidade Extradorso" value={laudo.tecidoPorosidadeExtradorso} />
           <View style={styles.divider} />
-          <InfoRow label="Conforme Fabricante" value={laudo.parecerConformeFabricante} />
+          <InfoRow
+            label="Parecer do Fabricante"
+            value={
+              PARECER_POROSIMETRO_LABELS[
+                laudo.parecerConformeFabricante as keyof typeof PARECER_POROSIMETRO_LABELS
+              ] ?? laudo.parecerConformeFabricante
+            }
+          />
           {laudo.observacoes ? (
             <View style={{ marginTop: 8 }}>
               <Text style={styles.infoLabel}>Observações:</Text>
@@ -250,6 +268,18 @@ export default function LaudoDetailScreen() {
             </View>
           ) : null}
         </InfoCard>
+
+        {medicoes.length > 0 && (
+          <InfoCard title="📊 Medição de Porosidade">
+            {medicoes.map((medicao) => (
+              <InfoRow
+                key={medicao.local}
+                label={medicao.local}
+                value={`${medicao.leitura}${medicao.cor !== '—' ? ` · ${medicao.cor}` : ''}`}
+              />
+            ))}
+          </InfoCard>
+        )}
 
         <InfoCard title="📋 Parecer Geral">
           <Text style={[styles.parecerText, { color: resultColor }]}>
@@ -362,9 +392,7 @@ function InfoRow({ label, value }: { label: string; value?: string }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={[styles.infoValue, isBad && { color: '#ef4444', fontWeight: '700' }]}>
-        {value}
-      </Text>
+      <Text style={[styles.infoValue, isBad && styles.infoValueBad]}>{isBad ? '✕' : value}</Text>
     </View>
   );
 }
@@ -385,6 +413,10 @@ const styles = StyleSheet.create({
   resultLabel: { fontSize: 17, fontWeight: '800', letterSpacing: 0.5 },
   resultSub: { color: '#64748b', fontSize: 12, marginTop: 2 },
   foto: { width: '100%', height: 200, borderRadius: 14, backgroundColor: '#f1f5f9' },
+  fotoLegenda: { color: '#64748b', fontSize: 12, fontWeight: '700', marginBottom: 6 },
+  fotoExtraRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  fotoExtraThumb: { width: 64, height: 64, borderRadius: 8, backgroundColor: '#f1f5f9' },
+  fotoExtraDesc: { flex: 1, color: '#334155', fontSize: 12, lineHeight: 17 },
   infoCard: {
     backgroundColor: '#ffffff',
     borderRadius: 14,
@@ -416,6 +448,7 @@ const styles = StyleSheet.create({
   },
   infoLabel: { color: '#64748b', fontSize: 12, fontWeight: '600', flex: 1.2 },
   infoValue: { color: '#1e293b', fontSize: 12, fontWeight: '500', flex: 1, textAlign: 'right' },
+  infoValueBad: { color: '#dc2626', fontSize: 16, fontWeight: '800' },
   divider: { height: 1, backgroundColor: '#e2e8f0', marginVertical: 4 },
   obsText: {
     color: '#475569',

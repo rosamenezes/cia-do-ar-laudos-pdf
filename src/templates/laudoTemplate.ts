@@ -1,127 +1,239 @@
-import { LaudoParapente, PorosityMap } from '../types/laudo';
-import { PARECER_GERAL_LABELS, PARECER_GERAL_COLORS } from '../types/constants';
+import {
+  LaudoParapente,
+  PorosityGrid,
+  PorosityMap,
+  PorosityMapLegacy,
+  isPorosityLegacy,
+  intradorsoEstaAtivo,
+} from '../types/laudo';
+import {
+  PARECER_GERAL_LABELS,
+  PARECER_GERAL_COLORS,
+  PARECER_POROSIMETRO_FAIXAS,
+  PARECER_POROSIMETRO_SHORT_LABELS,
+  PARECER_POROSIMETRO_COLORS,
+  POROSIDADE_COLUNAS,
+  POROSIDADE_COLUNA_X,
+  POROSIDADE_PONTO_Y,
+  POROSIDADE_VELA_PATH,
+} from '../types/constants';
 import { LOGO_BASE64 } from './logoAsset';
 import { imageToBase64 } from '../services/imageService';
+import { formatDateBR, formatMonthYearBR } from '../utils/date';
+import { cidadeDoLaudo, estadoDoLaudo } from '../utils/localidade';
 
 
-function renderPorosidadeMap(porosidade: PorosityMap | undefined) {
-  if (!porosidade) return '';
+/** Mesmas coordenadas usadas pelo seletor da tela, para o laudo bater com o app */
+const POROS_COLUNAS = POROSIDADE_COLUNAS;
+const POROS_COLUNA_X = POROSIDADE_COLUNA_X;
+const POROS_PONTO_Y = POROSIDADE_PONTO_Y;
+const POROS_VELA_PATH = POROSIDADE_VELA_PATH;
 
-  const activeExt = Object.entries(porosidade.extradorso || {}).filter(([_, v]) => v.selected);
-  const activeInt = Object.entries(porosidade.intradorso || {}).filter(([_, v]) => v.selected);
-  
-  if (activeExt.length === 0 && activeInt.length === 0) return '';
+function renderVelaSvg(grade: PorosityGrid): string {
+  const pontos = grade
+    .map((coluna, c) =>
+      coluna
+        .map((ponto, i) => {
+          // No laudo impresso só entram os pontos efetivamente medidos. Na tela
+          // os vazios continuam visíveis, porque são o alvo de toque do técnico.
+          if (!ponto?.selected) return '';
 
-  const renderDot = (cx: string, cy: number, isSelected: boolean) => {
-    if (!isSelected) return '';
-    return `
-      <circle cx="${cx}" cy="${cy}" r="6" fill="#ef4444" stroke="#7f1d1d" stroke-width="1.5" />
-      <circle cx="${cx}" cy="${cy}" r="2" fill="#ffffff" />
-    `;
+          const cx = POROS_COLUNA_X[c];
+          const cy = POROS_PONTO_Y[c][i];
+          return `
+            <circle cx="${cx}" cy="${cy}" r="6.5" fill="#dc2626" stroke="#7f1d1d" stroke-width="1.5" />
+            <circle cx="${cx}" cy="${cy}" r="2" fill="#ffffff" />`;
+        })
+        .join('')
+    )
+    .join('');
+
+  const rotulos = POROS_COLUNAS.map(
+    (nome, c) =>
+      `<text x="${POROS_COLUNA_X[c]}" y="149" text-anchor="middle" font-size="9" font-weight="700" fill="#64748b">${nome}</text>`
+  ).join('');
+
+  return `
+    <svg width="100%" viewBox="0 48 400 106" preserveAspectRatio="xMidYMid meet" style="display:block;height:auto;">
+      <path d="${POROS_VELA_PATH}" fill="#ffffff" stroke="#0f172a" stroke-width="3" stroke-linejoin="round" />
+      ${pontos}
+      ${rotulos}
+    </svg>`;
+}
+
+function renderTabelaPorosidade(
+  extradorso: PorosityGrid,
+  intradorso: PorosityGrid
+): string {
+  const linhas: string[] = [];
+
+  const coletar = (grade: PorosityGrid, superficie: string) => {
+    grade.forEach((coluna, c) =>
+      coluna.forEach((ponto, i) => {
+        if (!ponto?.selected) return;
+        linhas.push(`
+          <tr>
+            <td class="poros-local">${superficie} · ${POROS_COLUNAS[c]} · Ponto ${i + 1}</td>
+            <td class="poros-cor">${ponto.cor || '—'}</td>
+            <td class="poros-valor">${ponto.value || '—'}</td>
+          </tr>`);
+      })
+    );
   };
 
-  // Generate vertical lines for cells
-  let lines = '';
-  for (let i = 0; i < 30; i++) {
-    lines += `<line x1="${25 + i * 11.6}" y1="0" x2="${25 + i * 11.6}" y2="100" stroke="#cbd5e1" stroke-width="1" />`;
+  coletar(extradorso, 'Extradorso');
+  coletar(intradorso, 'Intradorso');
+
+  if (linhas.length === 0) return '';
+
+  const cabecalho = `
+      <tr>
+        <th class="poros-local">Ponto medido</th>
+        <th class="poros-cor">Cor</th>
+        <th class="poros-valor">Leitura</th>
+      </tr>`;
+
+  const tabela = (conteudo: string[]) =>
+    `<table class="tabela-porosidade">${cabecalho}${conteudo.join('')}</table>`;
+
+  // A grade permite até 30 pontos. Acima de 12 linhas a tabela sozinha
+  // estouraria a folha, então quebramos em duas colunas lado a lado.
+  if (linhas.length > 12) {
+    const meio = Math.ceil(linhas.length / 2);
+    return `
+    <div class="poros-tabelas">
+      <div class="poros-tabela-col">${tabela(linhas.slice(0, meio))}</div>
+      <div class="poros-tabela-col">${tabela(linhas.slice(meio))}</div>
+    </div>`;
   }
 
-  let html = `<div class="section-title">📊 MEDIÇÃO DE POROSIDADE</div>`;
+  return tabela(linhas);
+}
 
-  const wingPath = "M 30 75 C 10 75, 10 55, 30 55 Q 200 -5 370 55 C 390 55, 390 75, 370 75 Q 200 65 30 75 Z";
-  const shadowPath = "M 30 78 C 10 78, 10 58, 30 58 Q 200 -2 370 58 C 390 58, 390 78, 370 78 Q 200 68 30 78 Z";
+/** Formato antigo (pontos nomeados), para os laudos já emitidos */
+function renderPorosidadeLegado(porosidade: PorosityMapLegacy): string {
+  const ext = Object.entries(porosidade.extradorso || {}).filter(([, v]) => v?.selected);
+  const int = Object.entries(porosidade.intradorso || {}).filter(([, v]) => v?.selected);
+  if (ext.length === 0 && int.length === 0) return '';
 
-  // SVG Extradorso
-  html += `
-    <div style="margin-bottom: 24px;">
-      <div style="font-size: 13px; font-weight: 800; color: #1e293b; text-align: center; margin-bottom: 12px; letter-spacing: 0.5px;">EXTRADORSO</div>
-      <div style="width: 100%; height: 120px; position: relative;">
-        <svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="none">
-          <defs>
-            <clipPath id="wingClipExtPDF">
-              <path d="${wingPath}" />
-            </clipPath>
-          </defs>
-          <path d="${shadowPath}" fill="#e2e8f0" />
-          <path d="${wingPath}" fill="#ffffff" />
-          <g clip-path="url(#wingClipExtPDF)">${lines}</g>
-          <path d="${wingPath}" fill="none" stroke="#334155" stroke-width="2.5" stroke-linejoin="round" />
-          
-          ${renderDot('20%', 58, porosidade.extradorso.pontaEsquerda?.selected)}
-          ${renderDot('40%', 36, porosidade.extradorso.meioEsquerda?.selected)}
-          ${renderDot('60%', 36, porosidade.extradorso.meioDireita?.selected)}
-          ${renderDot('80%', 58, porosidade.extradorso.pontaDireita?.selected)}
-        </svg>
+  const exLabels: Record<string, string> = {
+    pontaEsquerda: 'Extradorso: Ponta Esq.',
+    meioEsquerda: 'Extradorso: Meio Esq.',
+    meioDireita: 'Extradorso: Meio Dir.',
+    pontaDireita: 'Extradorso: Ponta Dir.',
+  };
+  const inLabels: Record<string, string> = {
+    esquerda: 'Intradorso: Esquerda',
+    centro: 'Intradorso: Centro',
+    direita: 'Intradorso: Direita',
+  };
+
+  const linhas = [
+    ...ext.map(([k, v]) => `<tr><td class="poros-local">${exLabels[k] ?? k}</td><td class="poros-valor">${v.value || '—'}</td></tr>`),
+    ...int.map(([k, v]) => `<tr><td class="poros-local">${inLabels[k] ?? k}</td><td class="poros-valor">${v.value || '—'}</td></tr>`),
+  ].join('');
+
+  return `
+    <div class="section-title">📊 MEDIÇÃO DE POROSIDADE</div>
+    <table class="tabela-porosidade">
+      <tr><th class="poros-local">Ponto medido</th><th class="poros-valor">Leitura (s)</th></tr>
+      ${linhas}
+    </table>`;
+}
+
+function renderPorosidadeMap(porosidade: PorosityMap | PorosityMapLegacy | undefined): string {
+  if (!porosidade) return '';
+  if (isPorosityLegacy(porosidade)) return renderPorosidadeLegado(porosidade);
+
+  const ext = Array.isArray(porosidade.extradorso) ? porosidade.extradorso : [];
+  // O intradorso só sai no laudo quando o técnico o incluiu. Desligado, os
+  // pontos podem existir no documento, mas nem o desenho nem a tabela o mostram.
+  const comIntradorso = intradorsoEstaAtivo(porosidade);
+  const int = comIntradorso && Array.isArray(porosidade.intradorso) ? porosidade.intradorso : [];
+
+  const algumMarcado = [...ext, ...int].some((coluna) =>
+    (coluna ?? []).some((ponto) => ponto?.selected)
+  );
+  if (!algumMarcado) return '';
+
+  const velaIntradorso = comIntradorso
+    ? `
+      <div class="poros-vela">
+        <div class="poros-vela-titulo">INTRADORSO</div>
+        ${renderVelaSvg(int)}
+      </div>`
+    : '';
+
+  return `
+    <div class="section-title">📊 MEDIÇÃO DE POROSIDADE</div>
+
+    <div class="poros-velas${comIntradorso ? '' : ' poros-velas-unica'}">
+      <div class="poros-vela">
+        <div class="poros-vela-titulo">EXTRADORSO</div>
+        ${renderVelaSvg(ext)}
       </div>
+      ${velaIntradorso}
     </div>
-  `;
 
-  // SVG Intradorso
-  html += `
-    <div style="margin-bottom: 32px;">
-      <div style="font-size: 13px; font-weight: 800; color: #1e293b; text-align: center; margin-bottom: 12px; letter-spacing: 0.5px;">INTRADORSO</div>
-      <div style="width: 100%; height: 120px; position: relative;">
-        <svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="none">
-          <defs>
-            <clipPath id="wingClipIntPDF">
-              <path d="${wingPath}" />
-            </clipPath>
-          </defs>
-          <path d="${shadowPath}" fill="#e2e8f0" />
-          <path d="${wingPath}" fill="#f1f5f9" />
-          <g clip-path="url(#wingClipIntPDF)">${lines}</g>
-          <path d="${wingPath}" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" />
-          
-          ${renderDot('25%', 50, porosidade.intradorso.esquerda?.selected)}
-          ${renderDot('50%', 28, porosidade.intradorso.centro?.selected)}
-          ${renderDot('75%', 50, porosidade.intradorso.direita?.selected)}
-        </svg>
-      </div>
-    </div>
-  `;
-
-  // Tabela de Resultados
-  html += `
-    <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-      <tr>
-        <th style="background-color: #f1f5f9; padding: 12px 16px; font-size: 11px; font-weight: 800; color: #334155; text-transform: uppercase; border: 1px solid #cbd5e1; width: 60%; text-align: left;">Ponto Medido</th>
-        <th style="background-color: #f1f5f9; padding: 12px 16px; font-size: 11px; font-weight: 800; color: #334155; text-transform: uppercase; border: 1px solid #cbd5e1; width: 40%; text-align: center;">Resultado (Segundos)</th>
-      </tr>
-  `;
-
-  const exLabels: any = { pontaEsquerda: 'Extradorso: Ponta Esq.', meioEsquerda: 'Extradorso: Meio Esq.', meioDireita: 'Extradorso: Meio Dir.', pontaDireita: 'Extradorso: Ponta Dir.' };
-  activeExt.forEach(([k, v]) => {
-    html += `
-      <tr>
-        <td style="padding: 12px 16px; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 700; color: #1e293b; text-align: left;">${exLabels[k]}</td>
-        <td style="padding: 12px 16px; border: 1px solid #e2e8f0; font-size: 13px; font-weight: 800; color: #db2777; text-align: center;">${v.value || '-'}</td>
-      </tr>
-    `;
-  });
-
-  const inLabels: any = { esquerda: 'Intradorso: Esquerda', centro: 'Intradorso: Centro', direita: 'Intradorso: Direita' };
-  activeInt.forEach(([k, v]) => {
-    html += `
-      <tr>
-        <td style="padding: 12px 16px; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 700; color: #1e293b; text-align: left;">${inLabels[k]}</td>
-        <td style="padding: 12px 16px; border: 1px solid #e2e8f0; font-size: 13px; font-weight: 800; color: #db2777; text-align: center;">${v.value || '-'}</td>
-      </tr>
-    `;
-  });
-
-  html += `</table>`;
-  return html;
+    ${renderTabelaPorosidade(ext, int)}`;
 }
 
 export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> {
-  let fotoBase64 = '';
-  if (laudo.fotoUri) {
+  const converterFoto = async (uri?: string) => {
+    if (!uri) return '';
     try {
-      fotoBase64 = await imageToBase64(laudo.fotoUri);
+      return await imageToBase64(uri);
     } catch (e) {
       console.warn('Não foi possível converter a foto para base64', e);
+      return '';
     }
-  }
+  };
+
+  const fotoBase64 = await converterFoto(laudo.fotoUri);
+  const fotoSeloBase64 = await converterFoto(laudo.fotoSeloUri);
+
+  const fotosAdicionais = (
+    await Promise.all(
+      (laudo.fotosAdicionais ?? []).map(async (foto) => ({
+        base64: await converterFoto(foto.uri),
+        descricao: foto.descricao ?? '',
+      }))
+    )
+  ).filter((foto) => foto.base64);
+
+  // Fila única na ordem em que as fotos aparecem no laudo.
+  // As três primeiras ganham destaque (folha inteira / meia folha);
+  // da quarta em diante vão para a grade de miniaturas.
+  const filaFotos = [
+    { base64: fotoBase64, titulo: '📷 REGISTRO FOTOGRÁFICO DO EQUIPAMENTO', legenda: '' },
+    { base64: fotoSeloBase64, titulo: '🏷️ SELO DE INFORMAÇÕES DA VELA', legenda: '' },
+    ...fotosAdicionais.map((foto, i) => ({
+      base64: foto.base64,
+      titulo: `🔍 REGISTRO COMPLEMENTAR ${i + 1}`,
+      legenda: foto.descricao,
+    })),
+  ].filter((foto) => foto.base64);
+
+  const fotoFolhaInteira = filaFotos[0];
+  const fotoMeiaA = filaFotos[1];
+  const fotoMeiaB = filaFotos[2];
+  const fotosMiniatura = filaFotos.slice(3);
+
+  const renderFotoDestaque = (
+    foto: { base64: string; titulo: string; legenda: string } | undefined,
+    classe: string
+  ) => {
+    if (!foto) return '';
+    return `
+      <div class="foto-card ${classe}">
+        <div class="foto-header">${foto.titulo}</div>
+        <div class="foto-body">
+          <img src="${foto.base64}" alt="${foto.titulo}" />
+        </div>
+        ${foto.legenda ? `<div class="foto-legenda">${foto.legenda}</div>` : ''}
+      </div>
+    `;
+  };
 
   const resultColor = PARECER_GERAL_COLORS[laudo.parecerGeral] ?? '#374151';
   const resultLabel = PARECER_GERAL_LABELS[laudo.parecerGeral];
@@ -135,28 +247,133 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       CONDENADO: '🚫',
     }[laudo.parecerGeral] ?? '📋';
 
-  const formatDate = (val: string) => {
-    try {
-      const p = val.split('-');
-      if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
-    } catch {}
-    return val;
-  };
+  const formatDate = (val: string) => formatDateBR(val);
 
   const renderStatusBadge = (status: string) => {
     if (status === 'Ok' || status === 'Correto') {
       return `<span style="display: inline-block; background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px;">✓ Ok</span>`;
     }
     if (status === 'Não Ok' || status === 'Incorreto') {
-      return `<span style="display: inline-block; background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px;">✕ Não Ok</span>`;
+      return `<span style="display: inline-block; color: #dc2626; font-size: 16px; font-weight: 800; line-height: 1;">✕</span>`;
     }
     return `<span style="display: inline-block; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700;">${status}</span>`;
+  };
+
+  /**
+   * Tabela da escala do porosímetro, com a faixa escolhida destacada.
+   * O laudo mostra a escala inteira para o piloto entender onde a vela caiu.
+   */
+  const renderParecerPorosimetro = (valor: string) => {
+    const faixas = Object.keys(PARECER_POROSIMETRO_FAIXAS) as (keyof typeof PARECER_POROSIMETRO_FAIXAS)[];
+    const escolhido = faixas.includes(valor as any) ? valor : '';
+
+    // Laudo antigo com texto livre: mostra o que foi digitado, sem a escala
+    if (!escolhido) {
+      if (!valor || !valor.trim()) return '';
+      return `
+      <div class="section-title">🏭 Parecer do Fabricante</div>
+      <table><tr><th>Conforme fabricante</th><td>${valor}</td></tr></table>
+      `;
+    }
+
+    const linhas = faixas
+      .map((chave) => {
+        const ativa = chave === escolhido;
+        const cor = PARECER_POROSIMETRO_COLORS[chave];
+        return `
+        <tr class="${ativa ? 'faixa-ativa' : ''}">
+          <td class="faixa-marca">${ativa ? `<span style="color:${cor};font-weight:800;">●</span>` : ''}</td>
+          <td class="faixa-valor" style="${ativa ? `color:${cor};font-weight:800;` : ''}">${PARECER_POROSIMETRO_FAIXAS[chave]}</td>
+          <td class="faixa-texto" style="${ativa ? `color:${cor};font-weight:700;` : ''}">${PARECER_POROSIMETRO_SHORT_LABELS[chave]}</td>
+        </tr>`;
+      })
+      .join('');
+
+    return `
+      <div class="section-title">🏭 Parecer do Fabricante — Leitura do Porosímetro</div>
+      <table class="tabela-porosimetro">
+        <tr>
+          <th class="faixa-marca"></th>
+          <th class="faixa-valor">Leitura</th>
+          <th class="faixa-texto">Classificação do fabricante</th>
+        </tr>
+        ${linhas}
+      </table>
+    `;
   };
 
   const renderObs = (obs: string) => {
     if (!obs || obs.trim() === '') return '';
     return `<div style="font-size: 9px; color: #64748b; margin-top: 3px; font-weight: 500; line-height: 1.2;">Obs: ${obs}</div>`;
   };
+
+  // Conteúdo da checagem técnica. Tem dois destinos possíveis: a metade de baixo
+  // da folha de fotos (quando só existem 2 fotos) ou uma folha própria.
+  const conteudoChecagem = `
+      <div class="section-title-continuacao">Checagem Técnica</div>
+      <!-- LINHAS -->
+      <div class="section-title">🧵 Checagem de Linhas</div>
+      <table>
+        <tr><th>Tirantes</th><td>
+          ${renderStatusBadge(laudo.linhasTirantes)}
+          ${renderObs(laudo.linhasTirantesObs)}
+        </td></tr>
+        <tr><th>Batoques e Argolas</th><td>
+          ${renderStatusBadge(laudo.linhasBatoquesArgolas)}
+          ${renderObs(laudo.linhasBatoquesArgolasObs)}
+        </td></tr>
+        <tr><th>Roldanas</th><td>
+          ${renderStatusBadge(laudo.linhasRoldanas)}
+          ${renderObs(laudo.linhasRoldanasObs)}
+        </td></tr>
+        <tr><th>Distorcedor</th><td>
+          ${renderStatusBadge(laudo.linhasDistorcedor)}
+          ${renderObs(laudo.linhasDistorcedorObs)}
+        </td></tr>
+        <tr><th>Carga nas Linhas</th><td>
+          ${renderStatusBadge(laudo.linhasCarga)}
+          ${renderObs(laudo.linhasCargaObs)}
+        </td></tr>
+        <tr><th>Troca de Linhas</th><td>
+          ${renderStatusBadge(laudo.linhasTroca)}
+          ${renderObs(laudo.linhasTrocaObs)}
+        </td></tr>
+        <tr><th>Simetria</th><td>
+          ${renderStatusBadge(laudo.linhasSimetria)}
+          ${renderObs(laudo.linhasSimetriaObs)}
+        </td></tr>
+        <tr><th>Trimagem</th><td>
+          ${renderStatusBadge(laudo.linhasTrimagem)}
+          ${renderObs(laudo.linhasTrimagemObs)}
+        </td></tr>
+      </table>
+
+      <!-- TECIDO -->
+      <div class="section-title">🛡️ Checagem do Tecido</div>
+      <table>
+        <tr><th>Check do Perfil</th><td>
+          ${renderStatusBadge(laudo.tecidoCheckPerfil)}
+          ${renderObs(laudo.tecidoCheckPerfilObs)}
+        </td></tr>
+        <tr><th>Check do Intradorso</th><td>
+          ${renderStatusBadge(laudo.tecidoCheckIntradorso)}
+          ${renderObs(laudo.tecidoCheckIntradorsoObs)}
+        </td></tr>
+        <tr><th>Check do Bordo Ataque</th><td>
+          ${renderStatusBadge(laudo.tecidoCheckBordoAtaque)}
+          ${renderObs(laudo.tecidoCheckBordoAtaqueObs)}
+        </td></tr>
+        <tr><th>Check do Extradorso</th><td>
+          ${renderStatusBadge(laudo.tecidoCheckExtradorso)}
+          ${renderObs(laudo.tecidoCheckExtradorsoObs)}
+        </td></tr>
+        <tr><th>Teste de Resistência</th><td>
+          ${renderStatusBadge(laudo.tecidoTesteResistencia)}
+        </td></tr>
+        
+      </table>
+  `;
+
 
   const logoWatermarkHtml = `
     <div class="global-watermark">
@@ -345,6 +562,219 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
       text-align: center;
       background: #ffffff;
     }
+    /* FOLHA 1: a foto ocupa toda a altura que sobrar, sem empurrar página */
+    .folha-com-foto .page-content {
+      display: flex;
+      flex-direction: column;
+      /* altura definida (não mínima): é o que permite ao flex:1 da foto
+         esticar para ocupar exatamente o espaço que sobra da folha */
+      height: 220mm;
+    }
+    .foto-preenche {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .foto-preenche .foto-body,
+    .foto-meia .foto-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .foto-preenche .foto-body img,
+    .foto-meia .foto-body img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+
+    /* FOLHA DE FOTOS: cada destaque ocupa metade da altura útil */
+    /* Duas destas precisam caber no orçamento de 240mm da folha
+       (o mesmo limite que o commit a40c182c fixou para não gerar
+       folha em branco na impressão do iOS). */
+    .foto-meia {
+      height: 100mm;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 5mm;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .foto-meia:last-child {
+      margin-bottom: 0;
+    }
+    .foto-legenda {
+      padding: 5px 10px;
+      font-size: 9px;
+      color: #475569;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+      line-height: 1.35;
+    }
+
+    /* Título da checagem quando ela continua na metade de baixo da folha */
+    .section-title-continuacao {
+      background: linear-gradient(90deg, #1e293b 0%, #334155 100%);
+      color: #ffffff;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      border-left: 4px solid #db2777;
+      border-radius: 3px;
+      margin: 0 0 8px 0;
+    }
+
+    /* MAPA DE POROSIDADE */
+    .poros-velas {
+      display: flex;
+      flex-direction: column; /* empilhadas e em largura cheia, como na ficha de oficina */
+      gap: 6px;
+      margin: 8px 0 10px 0;
+    }
+    .poros-vela {
+      width: 72%; /* dimensionada para as duas velas + tabelas caberem nos 240mm */
+      margin: 0 auto;
+    }
+    /* Só o extradorso: sobra folha, então o desenho vem maior */
+    .poros-velas-unica .poros-vela {
+      width: 86%;
+    }
+    .poros-vela-titulo {
+      font-size: 10px;
+      font-weight: 800;
+      color: #1e293b;
+      text-align: center;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .poros-tabelas {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .poros-tabela-col {
+      flex: 1;
+      min-width: 0;
+    }
+    /* Mais específico que .tabela-porosidade, senão a regra abaixo prevalece */
+    .poros-tabelas .tabela-porosidade .poros-cor {
+      width: 56px !important;
+    }
+    .poros-tabelas .tabela-porosidade .poros-valor {
+      width: 46px !important;
+    }
+    .poros-tabelas .tabela-porosidade td,
+    .poros-tabelas .tabela-porosidade th {
+      font-size: 8px !important;
+      padding: 2px 5px !important;
+      line-height: 1.25 !important;
+    }
+    .tabela-porosidade {
+      table-layout: fixed;
+    }
+    .tabela-porosidade td,
+    .tabela-porosidade th {
+      padding: 5px 10px !important;
+      font-size: 10px;
+    }
+    .tabela-porosidade .poros-local {
+      width: auto !important;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    .tabela-porosidade .poros-cor {
+      width: 110px !important;
+      color: #475569;
+    }
+    .tabela-porosidade .poros-valor {
+      width: 80px !important;
+      text-align: center;
+      font-weight: 800;
+      color: #db2777;
+    }
+    .tabela-porosidade th {
+      padding-left: 10px !important;
+      color: #475569;
+      font-weight: 700;
+    }
+
+    /* TABELA DA ESCALA DO POROSÍMETRO */
+    .tabela-porosimetro {
+      table-layout: fixed; /* o th global tem width:25%, que desalinha as colunas */
+    }
+    .tabela-porosimetro td,
+    .tabela-porosimetro th {
+      padding: 6px 10px !important;
+      font-size: 10px;
+    }
+    .tabela-porosimetro .faixa-marca {
+      width: 22px !important;
+      text-align: center;
+      padding-left: 8px !important;
+      padding-right: 0 !important;
+    }
+    .tabela-porosimetro .faixa-valor {
+      width: 92px !important;
+      font-weight: 700;
+      color: #334155;
+    }
+    .tabela-porosimetro td.faixa-valor {
+      white-space: nowrap;
+    }
+    .tabela-porosimetro th {
+      padding-left: 10px !important;
+    }
+    .tabela-porosimetro .faixa-texto {
+      width: auto !important;
+      color: #475569;
+    }
+    .tabela-porosimetro tr.faixa-ativa td {
+      background: #fdf2f8;
+    }
+
+    /* GRADE DE FOTOS COMPLEMENTARES */
+    .fotos-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .foto-extra {
+      width: calc(50% - 5px);
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #ffffff;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .foto-extra img {
+      width: 100%;
+      height: 82px;
+      object-fit: cover;
+      display: block;
+    }
+    .foto-extra-legenda {
+      padding: 6px 8px;
+      font-size: 9px;
+      color: #475569;
+      line-height: 1.35;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .foto-extra-legenda strong {
+      color: #db2777;
+    }
+
     .foto-body img {
       max-width: 100%;
       max-height: 250px;
@@ -432,7 +862,7 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
   <!-- ════════════════════════════════════════
        PÁGINA 1 — Dados + Identificação + Foto
        ════════════════════════════════════════ -->
-  <div class="pdf-page">
+  <div class="pdf-page${fotoFolhaInteira ? ' folha-com-foto' : ''}">
     <!-- MARCA D'ÁGUA INDIVIDUAL DA PÁGINA -->
     <div class="global-watermark">
       <img src="${LOGO_BASE64}" style="width: 100%; height: auto; display: block;" />
@@ -468,9 +898,9 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
         </tr>
         <tr>
           <th>Cidade</th>
-          <td>${laudo.cidade || (laudo.cidadeEstado ? laudo.cidadeEstado.split('-')[0].trim() : '-')}</td>
+          <td>${cidadeDoLaudo(laudo)}</td>
           <th>Estado (UF)</th>
-          <td>${laudo.estado || (laudo.cidadeEstado && laudo.cidadeEstado.includes('-') ? laudo.cidadeEstado.split('-')[1].trim() : '-')}</td>
+          <td>${estadoDoLaudo(laudo)}</td>
         </tr>
         <tr>
           <th>Endereço</th>
@@ -491,7 +921,7 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
           <th>Nº de Série</th>
           <td>${laudo.numeroSerie}</td>
           <th>Data de Fabricação</th>
-          <td>${laudo.dataFabricacao}</td>
+          <td>${formatMonthYearBR(laudo.dataFabricacao)}</td>
         </tr>
         <tr>
           <th>Cor Bordo de Ataque</th>
@@ -505,107 +935,87 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
         </tr>
       </table>
 
-      <!-- FOTO -->
-      ${
-        fotoBase64
-          ? `
-      <div class="foto-card">
-        <div class="foto-header">📷 REGISTRO FOTOGRÁFICO DO EQUIPAMENTO</div>
-        <div class="foto-body">
-          <img src="${fotoBase64}" alt="Foto da vela" />
-        </div>
-      </div>
-      `
-          : ''
-      }
+      <!-- FOTO 1 — preenche todo o espaço restante da folha -->
+      ${renderFotoDestaque(fotoFolhaInteira, 'foto-preenche')}
 
     </div>
   </div>
 
+  ${
+    fotoMeiaA
+      ? `
   <!-- ════════════════════════════════════════
-       PÁGINA 2 — Checagem de Linhas e Tecido
+       FOLHA DE FOTOS — 2ª (metade de cima) e 3ª (metade de baixo).
+       Sem a 3ª foto, o laudo retoma na metade de baixo desta folha.
        ════════════════════════════════════════ -->
   <div class="pdf-page page-break">
-    <!-- MARCA D'ÁGUA INDIVIDUAL DA PÁGINA -->
     <div class="global-watermark">
       <img src="${LOGO_BASE64}" style="width: 100%; height: auto; display: block;" />
     </div>
 
     <div class="page-content">
+      <div class="page-subheader">
+        <span class="page-subheader-title">Registro Fotográfico</span>
+        <span class="page-subheader-info">Laudo Nº ${laudo.numeroLaudo} • ${laudo.nomeProprietario}</span>
+      </div>
 
-      <!-- Subheader -->
+      ${renderFotoDestaque(fotoMeiaA, 'foto-meia')}
+      ${fotoMeiaB ? renderFotoDestaque(fotoMeiaB, 'foto-meia') : conteudoChecagem}
+    </div>
+  </div>
+  `
+      : ''
+  }
+
+  ${
+    fotoMeiaA && !fotoMeiaB
+      ? '' /* já saiu na metade de baixo da folha de fotos */
+      : `
+  <!-- ════════════════════════════════════════
+       CHECAGEM TÉCNICA — folha própria
+       (precedida pelas miniaturas, quando há 4+ fotos)
+       ════════════════════════════════════════ -->
+  <div class="pdf-page page-break">
+    <div class="global-watermark">
+      <img src="${LOGO_BASE64}" style="width: 100%; height: auto; display: block;" />
+    </div>
+
+    <div class="page-content">
       <div class="page-subheader">
         <span class="page-subheader-title">Checagem Técnica</span>
         <span class="page-subheader-info">Laudo Nº ${laudo.numeroLaudo} • ${laudo.nomeProprietario}</span>
       </div>
 
-      <!-- LINHAS -->
-      <div class="section-title">🧵 Checagem de Linhas</div>
-      <table>
-        <tr><th>Tirantes</th><td>
-          ${renderStatusBadge(laudo.linhasTirantes)}
-          ${renderObs(laudo.linhasTirantesObs)}
-        </td></tr>
-        <tr><th>Batoques e Argolas</th><td>
-          ${renderStatusBadge(laudo.linhasBatoquesArgolas)}
-          ${renderObs(laudo.linhasBatoquesArgolasObs)}
-        </td></tr>
-        <tr><th>Roldanas</th><td>
-          ${renderStatusBadge(laudo.linhasRoldanas)}
-          ${renderObs(laudo.linhasRoldanasObs)}
-        </td></tr>
-        <tr><th>Distorcedor</th><td>
-          ${renderStatusBadge(laudo.linhasDistorcedor)}
-          ${renderObs(laudo.linhasDistorcedorObs)}
-        </td></tr>
-        <tr><th>Carga nas Linhas</th><td>
-          ${renderStatusBadge(laudo.linhasCarga)}
-          ${renderObs(laudo.linhasCargaObs)}
-        </td></tr>
-        <tr><th>Troca de Linhas</th><td>
-          ${renderStatusBadge(laudo.linhasTroca)}
-          ${renderObs(laudo.linhasTrocaObs)}
-        </td></tr>
-        <tr><th>Simetria</th><td>
-          ${renderStatusBadge(laudo.linhasSimetria)}
-          ${renderObs(laudo.linhasSimetriaObs)}
-        </td></tr>
-        <tr><th>Trimagem</th><td>
-          ${renderStatusBadge(laudo.linhasTrimagem)}
-          ${renderObs(laudo.linhasTrimagemObs)}
-        </td></tr>
-      </table>
+      ${
+        fotosMiniatura.length > 0
+          ? `
+      <div class="section-title">🔍 Demais Registros Fotográficos</div>
+      <div class="fotos-grid">
+        ${fotosMiniatura
+          .map(
+            (foto, i) => `
+          <div class="foto-extra">
+            <img src="${foto.base64}" alt="Registro ${i + 4}" />
+            <div class="foto-extra-legenda">
+              <strong>Foto ${i + 4}</strong>${foto.legenda ? ` — ${foto.legenda}` : ''}
+            </div>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+      `
+          : ''
+      }
 
-      <!-- TECIDO -->
-      <div class="section-title">🛡️ Checagem do Tecido</div>
-      <table>
-        <tr><th>Check do Perfil</th><td>
-          ${renderStatusBadge(laudo.tecidoCheckPerfil)}
-          ${renderObs(laudo.tecidoCheckPerfilObs)}
-        </td></tr>
-        <tr><th>Check do Intradorso</th><td>
-          ${renderStatusBadge(laudo.tecidoCheckIntradorso)}
-          ${renderObs(laudo.tecidoCheckIntradorsoObs)}
-        </td></tr>
-        <tr><th>Check do Bordo Ataque</th><td>
-          ${renderStatusBadge(laudo.tecidoCheckBordoAtaque)}
-          ${renderObs(laudo.tecidoCheckBordoAtaqueObs)}
-        </td></tr>
-        <tr><th>Check do Extradorso</th><td>
-          ${renderStatusBadge(laudo.tecidoCheckExtradorso)}
-          ${renderObs(laudo.tecidoCheckExtradorsoObs)}
-        </td></tr>
-        <tr><th>Teste de Resistência</th><td>
-          ${renderStatusBadge(laudo.tecidoTesteResistencia)}
-        </td></tr>
-        
-      </table>
-
+      ${conteudoChecagem}
     </div>
   </div>
+  `
+  }
 
-  
   <!-- ════════════════════════════════════════
+       PÁGINA 3 — Medição de Porosidade  <!-- ════════════════════════════════════════
        PÁGINA 3 — Medição de Porosidade
        ════════════════════════════════════════ -->
   ${laudo.porosidade ? `
@@ -638,6 +1048,8 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
         <span class="page-subheader-title">Parecer Final</span>
         <span class="page-subheader-info">Laudo Nº ${laudo.numeroLaudo} • ${laudo.nomeProprietario}</span>
       </div>
+
+      ${renderParecerPorosimetro(laudo.parecerConformeFabricante)}
 
       <!-- PARECER GERAL -->
       <div class="resultado-banner">

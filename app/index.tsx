@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   RefreshControl,
   ActivityIndicator,
   Platform,
-  Alert,
   useWindowDimensions,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -16,7 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../src/contexts/ThemeContext';
 import { LaudoParapente } from '../src/types/laudo';
-import { getLaudos, seedMockLaudos, deleteLaudo } from '../src/services/database';
+import { getLaudos, getTodosLaudos, seedMockLaudos, deleteLaudo } from '../src/services/database';
+import { confirmar, notificar } from '../src/utils/feedback';
+import { filtrarLaudos } from '../src/utils/busca';
 import { LaudoCard } from '../src/components/LaudoCard';
 import { SearchBar } from '../src/components/SearchBar';
 
@@ -27,17 +28,40 @@ export default function LaudosScreen() {
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
 
-  const loadLaudos = useCallback(async (isInitial = false) => {
-    try {
-      if (isInitial) setLoading(true);
-      const data = await getLaudos();
-      setLaudos(data);
-    } catch (e) {
-      console.error('Erro ao carregar laudos:', e);
-    } finally {
-      if (isInitial) setLoading(false);
-    }
+  // A listagem traz só a primeira página, para abrir rápido. A busca precisa do
+  // histórico inteiro, então ele é carregado à parte — e só quando alguém busca,
+  // para não pagar a leitura completa em toda abertura do app.
+  const [historico, setHistorico] = useState<LaudoParapente[] | null>(null);
+  const [statusHistorico, setStatusHistorico] = useState<
+    'ocioso' | 'carregando' | 'pronto' | 'erro'
+  >('ocioso');
+
+  // Trava em ref, não em estado: o guard não pode ser uma dependência do efeito
+  // que ele próprio altera, senão a busca se cancela e trava em "carregando".
+  const historicoPedido = useRef(false);
+
+  const invalidarHistorico = useCallback(() => {
+    historicoPedido.current = false;
+    setHistorico(null);
+    setStatusHistorico('ocioso');
   }, []);
+
+  const loadLaudos = useCallback(
+    async (isInitial = false) => {
+      try {
+        if (isInitial) setLoading(true);
+        const data = await getLaudos();
+        setLaudos(data);
+        // Um laudo pode ter sido criado ou editado desde a última busca.
+        invalidarHistorico();
+      } catch (e) {
+        console.error('Erro ao carregar laudos:', e);
+      } finally {
+        if (isInitial) setLoading(false);
+      }
+    },
+    [invalidarHistorico]
+  );
 
   // Recarrega ao voltar para a tela (silenciosamente se já tivermos dados)
   useFocusEffect(
@@ -45,6 +69,27 @@ export default function LaudosScreen() {
       loadLaudos(laudos.length === 0);
     }, [loadLaudos, laudos.length])
   );
+
+  const termoBusca = searchText.trim();
+  const estaBuscando = termoBusca.length > 0;
+
+  useEffect(() => {
+    if (!estaBuscando || historicoPedido.current) return;
+
+    historicoPedido.current = true;
+    setStatusHistorico('carregando');
+
+    getTodosLaudos()
+      .then((todos) => {
+        setHistorico(todos);
+        setStatusHistorico('pronto');
+      })
+      .catch(() => {
+        // Sem o histórico a busca ainda funciona, mas só sobre o que já está
+        // na tela — o usuário precisa saber que o resultado é parcial.
+        setStatusHistorico('erro');
+      });
+  }, [estaBuscando]);
 
   const handlePressLaudo = useCallback((laudo: LaudoParapente) => {
     router.push(`/laudo/${laudo.id}`);
@@ -57,42 +102,32 @@ export default function LaudosScreen() {
       const processDeletion = async () => {
         // Exclusão Otimista: remove da tela instantaneamente (0 segundos de espera)
         setLaudos((prev) => prev.filter((l) => l.id !== id));
+        setHistorico((prev) => (prev ? prev.filter((l) => l.id !== id) : prev));
         try {
           await deleteLaudo(id);
         } catch (error) {
-          window.alert('Não foi possível excluir o laudo. Ele será recarregado.');
+          notificar('Não foi possível excluir o laudo. Ele será recarregado.');
           // Reverte puxando do banco novamente em caso de erro
           loadLaudos(false);
         }
       };
 
-      if (Platform.OS === 'web') {
-        if (window.confirm(confirmMessage)) {
-          processDeletion();
-        }
-        return;
-      }
-
-      Alert.alert('Excluir Laudo', confirmMessage, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: processDeletion },
-      ]);
+      confirmar('Excluir Laudo', confirmMessage, {
+        rotuloConfirmar: 'Excluir',
+        destrutivo: true,
+      }).then((ok) => {
+        if (ok) processDeletion();
+      });
     },
     [loadLaudos]
   );
 
-  // Filtragem em memória — instantânea
+  // Enquanto o histórico não chega, filtra o que já está na tela: o resultado
+  // aparece na hora e completa sozinho quando a leitura termina.
   const filteredLaudos = useMemo(() => {
-    const term = searchText.trim().toLowerCase();
-    if (term.length === 0) return laudos;
-    return laudos.filter(
-      (l) =>
-        l.nomeProprietario.toLowerCase().includes(term) ||
-        l.numeroLaudo.toLowerCase().includes(term) ||
-        l.fabricaModelo.toLowerCase().includes(term) ||
-        l.numeroSerie.toLowerCase().includes(term)
-    );
-  }, [laudos, searchText]);
+    if (!estaBuscando) return laudos;
+    return filtrarLaudos(historico ?? laudos, termoBusca);
+  }, [laudos, historico, estaBuscando, termoBusca]);
 
   // Responsividade
   const { width } = useWindowDimensions();
@@ -139,8 +174,28 @@ export default function LaudosScreen() {
         <SearchBar value={searchText} onChangeText={setSearchText} />
       </View>
 
+      {/* Aviso enquanto o histórico completo ainda está a caminho */}
+      {estaBuscando && statusHistorico === 'carregando' && (
+        <View style={styles.buscaStatus}>
+          <ActivityIndicator size="small" color="#db2777" />
+          <Text style={styles.buscaStatusTexto}>Procurando no histórico completo…</Text>
+        </View>
+      )}
+      {estaBuscando && statusHistorico === 'erro' && (
+        <View style={styles.buscaStatus}>
+          <Ionicons name="cloud-offline-outline" size={16} color="#b45309" />
+          <Text style={[styles.buscaStatusTexto, styles.buscaStatusErro]}>
+            Não foi possível carregar o histórico. Buscando só nos laudos já carregados.
+          </Text>
+        </View>
+      )}
+
       {/* Lista ou estado vazio de busca */}
-      {filteredLaudos.length === 0 ? (
+      {filteredLaudos.length === 0 && statusHistorico === 'carregando' ? (
+        <View style={styles.noResultsContainer}>
+          <ActivityIndicator size="large" color="#db2777" />
+        </View>
+      ) : filteredLaudos.length === 0 ? (
         <View style={styles.noResultsContainer}>
           <Ionicons name="search-outline" size={48} color="#94a3b8" />
           <Text style={styles.noResultsTitle}>Nenhum resultado</Text>
@@ -199,6 +254,21 @@ export default function LaudosScreen() {
 }
 
 const styles = StyleSheet.create({
+  buscaStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  buscaStatusTexto: {
+    flex: 1,
+    fontSize: 12,
+    color: '#64748b',
+  },
+  buscaStatusErro: {
+    color: '#b45309',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',

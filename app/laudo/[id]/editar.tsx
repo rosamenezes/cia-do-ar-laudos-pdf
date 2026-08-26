@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   ScrollView,
-  Alert,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +12,7 @@ import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LaudoParapente, LaudoFormData } from '../../../src/types/laudo';
 import { getLaudoById, saveLaudo } from '../../../src/services/database';
+import { notificar } from '../../../src/utils/feedback';
 import { LaudoForm } from '../../../src/components/LaudoForm';
 
 export default function EditarLaudoScreen() {
@@ -28,7 +28,7 @@ export default function EditarLaudoScreen() {
       setLaudo(data);
     } catch (e) {
       console.error('Erro ao carregar laudo para edição:', e);
-      Alert.alert('Erro', 'Não foi possível carregar o laudo.');
+      notificar('Erro', 'Não foi possível carregar o laudo.');
       if (router.canGoBack()) {
         router.back();
       } else {
@@ -59,14 +59,14 @@ export default function EditarLaudoScreen() {
 
       await saveLaudo(laudoAtualizado); // INSERT OR REPLACE atualiza o registro
 
-      window.alert(`✅ As alterações no laudo ${laudo.numeroLaudo} foram salvas com sucesso.`);
+      notificar(`✅ As alterações no laudo ${laudo.numeroLaudo} foram salvas com sucesso.`);
       if (router.canGoBack()) {
         router.back();
       } else {
         router.replace('/');
       }
     } catch (e: any) {
-      Alert.alert('Erro', e.message ?? 'Não foi possível salvar as alterações.');
+      notificar('Erro', e.message ?? 'Não foi possível salvar as alterações.');
     } finally {
       setSaving(false);
     }

@@ -19,32 +19,73 @@ export async function requestPermissions(): Promise<boolean> {
   return cameraStatus.status === 'granted';
 }
 
+/**
+ * Seletor de imagem na web.
+ *
+ * O input PRECISA estar dentro do DOM antes do .click(): no Chrome do Android,
+ * um input solto faz o sistema abrir apenas o seletor de arquivos, sem as
+ * opções de Galeria/Fotos. Com o elemento na página e accept="image/*",
+ * o Android oferece os apps de galeria normalmente.
+ */
+function pickImageFromWeb(capture?: 'environment'): Promise<PhotoResult | null> {
+  return new Promise((resolve, reject) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    if (capture) input.setAttribute('capture', capture);
+
+    input.style.position = 'fixed';
+    input.style.left = '-9999px';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+
+    const cleanup = () => {
+      if (input.parentNode) input.parentNode.removeChild(input);
+    };
+
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      if (!file) {
+        cleanup();
+        resolve(null);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        const img = new Image();
+        img.onload = () => {
+          cleanup();
+          resolve({ uri: base64, width: img.width, height: img.height });
+        };
+        img.onerror = () => {
+          cleanup();
+          reject(new Error('Não foi possível ler a imagem selecionada.'));
+        };
+        img.src = base64;
+      };
+      reader.onerror = () => {
+        cleanup();
+        reject(new Error('Falha ao ler o arquivo selecionado.'));
+      };
+      reader.readAsDataURL(file);
+    };
+
+    // Ao cancelar, o evento "change" não dispara: sem isto a Promise ficava
+    // pendente para sempre e o botão parecia travado.
+    input.oncancel = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    input.click();
+  });
+}
+
 export async function pickFromCamera(): Promise<PhotoResult | null> {
   if (Platform.OS === 'web') {
-    return new Promise((resolve, reject) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.capture = 'environment'; // Força abrir a câmera traseira
-      input.onchange = async (e: any) => {
-        const file = e.target.files[0];
-        if (!file) {
-          resolve(null);
-          return;
-        }
-        
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = reader.result as string;
-          const img = new Image();
-          img.onload = () => resolve({ uri: base64, width: img.width, height: img.height });
-          img.src = base64;
-        };
-        reader.onerror = () => reject(new Error('Falha ao ler a foto.'));
-        reader.readAsDataURL(file);
-      };
-      input.click();
-    });
+    return pickImageFromWeb('environment');
   }
 
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -64,39 +105,7 @@ export async function pickFromCamera(): Promise<PhotoResult | null> {
 
 export async function pickFromGallery(): Promise<PhotoResult | null> {
   if (Platform.OS === 'web') {
-    return new Promise((resolve, reject) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*'; // Exige explicitamente imagens, o Android vai mostrar a Galeria
-      input.onchange = async (e: any) => {
-        const file = e.target.files[0];
-        if (!file) {
-          resolve(null);
-          return;
-        }
-        
-        // Em web, lemos o arquivo direto para Base64 sem passar pelo ImageManipulator
-        // porque o manipulador às vezes falha no Android Chrome com arquivos locais
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = reader.result as string;
-          
-          // Obtemos as dimensões reais da imagem
-          const img = new Image();
-          img.onload = () => {
-             resolve({
-                uri: base64,
-                width: img.width,
-                height: img.height
-             });
-          };
-          img.src = base64;
-        };
-        reader.onerror = () => reject(new Error('Falha ao ler o arquivo selecionado.'));
-        reader.readAsDataURL(file);
-      };
-      input.click();
-    });
+    return pickImageFromWeb();
   }
 
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();

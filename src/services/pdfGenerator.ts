@@ -36,9 +36,10 @@ export async function generatePdfBlob(laudo: LaudoParapente): Promise<Blob> {
 
   try {
     const opt = {
-      margin: [0, 0, 0, 0],
+      // Tupla explícita: html2pdf tipa a margem como [topo, dir, base, esq]
+      margin: [0, 0, 0, 0] as [number, number, number, number],
       filename: `Laudo-${laudo.numeroLaudo}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { 
         scale: 2, 
         useCORS: true, 
@@ -47,7 +48,7 @@ export async function generatePdfBlob(laudo: LaudoParapente): Promise<Blob> {
         scrollX: 0,
         windowWidth: 800
       },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      jsPDF: { unit: 'mm' as const, format: 'a4', orientation: 'portrait' as const },
     };
 
     const worker = html2pdf().set(opt).from(container);

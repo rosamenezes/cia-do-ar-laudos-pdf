@@ -11,40 +11,45 @@ import {
   Platform,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Ionicons } from '@expo/vector-icons';
 import { PhotoCapture } from './PhotoCapture';
+import { PhotoGallery } from './PhotoGallery';
 import PorosityMapSelector from './PorosityMapSelector';
-import { ParecerGeral, StatusCheck, LaudoFormData } from '../types/laudo';
+import { ParecerGeral, ParecerPorosimetro, StatusCheck, LaudoFormData } from '../types/laudo';
+import { formatDateBR, formatMonthYearBR, toMonthValue } from '../utils/date';
+import { notificar } from '../utils/feedback';
 import {
   STATUS_CHECK_OPTIONS,
   PARECER_GERAL_LABELS,
   PARECER_GERAL_COLORS,
+  PARECER_POROSIMETRO_LABELS,
+  PARECER_POROSIMETRO_COLORS,
   ESTADOS_BRASIL,
 } from '../types/constants';
 
 // Schema de validação Zod
 const laudoSchema = z.object({
-  numeroLaudo: z.string().min(1, 'Número do laudo é obrigatório'),
-  dataEmissao: z.string().min(1, 'Data de emissão é obrigatória'),
+  numeroLaudo: z.string().optional(),
+  dataEmissao: z.string().optional(),
 
   // Proprietário
-  nomeProprietario: z.string().min(1, 'Nome do proprietário é obrigatório'),
-  cidade: z.string().min(1, 'Cidade é obrigatória'),
-  estado: z.string().min(1, 'UF é obrigatório'),
-  telefone: z.string().min(1, 'Telefone é obrigatório'),
-  endereco: z.string().min(1, 'Endereço é obrigatório'),
-  email: z.string().email('E-mail inválido'),
+  nomeProprietario: z.string().optional(),
+  cidade: z.string().optional(),
+  estado: z.string().optional(),
+  telefone: z.string().optional(),
+  endereco: z.string().optional(),
+  email: z.string().optional(),
 
   // Vela
-  fabricaModelo: z.string().min(1, 'Fábrica/Modelo é obrigatório'),
-  numeroSerie: z.string().min(1, 'Nº de Série é obrigatório'),
-  dataFabricacao: z.string().min(1, 'Data de Fabricação é obrigatória'),
-  corBordoAtaque: z.string().min(1, 'Cor do Bordo de Ataque é obrigatória'),
-  corIntradorso: z.string().min(1, 'Cor do Intradorso é obrigatória'),
-  corExtradorso: z.string().min(1, 'Cor do Extradorso é obrigatória'),
+  fabricaModelo: z.string().optional(),
+  numeroSerie: z.string().optional(),
+  dataFabricacao: z.string().optional(),
+  corBordoAtaque: z.string().optional(),
+  corIntradorso: z.string().optional(),
+  corExtradorso: z.string().optional(),
 
   // Linhas
   linhasTirantes: z.enum(['Ok', 'Não Ok']),
@@ -74,12 +79,12 @@ const laudoSchema = z.object({
   tecidoCheckExtradorso: z.enum(['Ok', 'Não Ok']),
   tecidoCheckExtradorsoObs: z.string().optional(),
 
-  tecidoTesteResistencia: z.string().min(1, 'Obrigatório'),
+  tecidoTesteResistencia: z.string().optional(),
   // Porosidade visual
   porosidade: z.any().optional(),
 
-  parecerConformeFabricante: z.string().min(1, 'Obrigatório'),
-  observacoes: z.string(),
+  parecerConformeFabricante: z.string().optional(),
+  observacoes: z.string().optional(),
 
   // Geral e Foto
   parecerGeral: z.enum([
@@ -91,6 +96,10 @@ const laudoSchema = z.object({
     'CONDENADO',
   ]),
   fotoUri: z.string().optional(),
+  fotoSeloUri: z.string().optional(),
+  fotosAdicionais: z
+    .array(z.object({ uri: z.string(), descricao: z.string() }))
+    .optional(),
 });
 
 type FormValues = z.infer<typeof laudoSchema>;
@@ -145,17 +154,20 @@ function SelectRow<T extends string>({
               >
                 <Ionicons
                   name={iconName}
-                  size={14}
+                  size={isOk ? 14 : 18}
                   color={isSelected ? activeTextColor : '#94a3b8'}
                 />
-                <Text
-                  style={[
-                    styles.segmentedChipText,
-                    isSelected && { color: activeTextColor, fontWeight: '700' },
-                  ]}
-                >
-                  {display}
-                </Text>
+                {/* O "Não Ok" é representado apenas pelo X vermelho, sem rótulo */}
+                {isOk && (
+                  <Text
+                    style={[
+                      styles.segmentedChipText,
+                      isSelected && { color: activeTextColor, fontWeight: '700' },
+                    ]}
+                  >
+                    {display}
+                  </Text>
+                )}
               </TouchableOpacity>
             );
           })}
@@ -221,7 +233,7 @@ function StatePicker({
   onChange,
   error,
 }: {
-  value: string;
+  value?: string;
   onChange: (val: string) => void;
   error?: string;
 }) {
@@ -307,12 +319,7 @@ function parseDateString(str?: string): Date {
 }
 
 function formatDateForDisplay(isoOrStr?: string): string {
-  if (!isoOrStr) return '';
-  const d = parseDateString(isoOrStr);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
+  return formatDateBR(isoOrStr);
 }
 
 function formatDateForValue(d: Date): string {
@@ -327,13 +334,17 @@ function DatePickerField({
   value,
   onChange,
   error,
+  mode = 'date',
 }: {
   label: string;
-  value: string;
+  value?: string;
   onChange: (val: string) => void;
   error?: string;
+  /** 'month' guarda apenas AAAA-MM e exibe MM/AAAA */
+  mode?: 'date' | 'month';
 }) {
   const [show, setShow] = useState(false);
+  const isMonth = mode === 'month';
   const selectedDate = parseDateString(value);
 
   const handleChange = (event: DateTimePickerEvent, date?: Date) => {
@@ -341,7 +352,8 @@ function DatePickerField({
       setShow(false);
     }
     if (event.type === 'set' && date) {
-      onChange(formatDateForValue(date));
+      const full = formatDateForValue(date);
+      onChange(isMonth ? full.slice(0, 7) : full);
     }
   };
 
@@ -349,8 +361,8 @@ function DatePickerField({
     // Usamos createElement para burlar tipagem do react-native-web de forma limpa
     const React = require('react');
     const inputElement = React.createElement('input', {
-      type: 'date',
-      value: value || '',
+      type: isMonth ? 'month' : 'date',
+      value: isMonth ? toMonthValue(value) : value || '',
       onChange: (e: any) => onChange(e.target.value),
       style: {
         width: '100%',
@@ -385,7 +397,13 @@ function DatePickerField({
       >
         <Ionicons name="calendar-outline" size={18} color="#db2777" style={{ marginRight: 8 }} />
         <Text style={[styles.datePickerText, !value && { color: '#475569' }]}>
-          {value ? formatDateForDisplay(value) : 'DD/MM/AAAA'}
+          {value
+            ? isMonth
+              ? formatMonthYearBR(value)
+              : formatDateForDisplay(value)
+            : isMonth
+              ? 'MM/AAAA'
+              : 'DD/MM/AAAA'}
         </Text>
       </TouchableOpacity>
       {error && <Text style={styles.errorText}>⚠ {error}</Text>}
@@ -449,7 +467,7 @@ export function LaudoForm({
     resolver: zodResolver(laudoSchema),
     defaultValues: {
       dataEmissao: defaultValues?.dataEmissao ?? new Date().toISOString().split('T')[0],
-      dataFabricacao: defaultValues?.dataFabricacao ?? new Date().toISOString().split('T')[0],
+      dataFabricacao: defaultValues?.dataFabricacao ?? new Date().toISOString().slice(0, 7),
       cidade: defaultValues?.cidade ?? '',
       estado: defaultValues?.estado ?? 'RS',
       // Valores padrão recomendados
@@ -479,9 +497,8 @@ export function LaudoForm({
       tecidoCheckExtradorso: 'Ok',
       tecidoCheckExtradorsoObs: '',
 
-      tecidoTesteResistencia: 'Correto',
-      // Novos campos de porosidade visual não precisam de string 'Correto'
-      parecerConformeFabricante: 'Correto',
+      tecidoTesteResistencia: '',
+      parecerConformeFabricante: '',
       observacoes: '',
       parecerGeral: 'OTIMO',
       ...defaultValues,
@@ -489,25 +506,45 @@ export function LaudoForm({
   });
 
   const fotoUri = watch('fotoUri');
+  const fotoSeloUri = watch('fotoSeloUri');
+
+  /**
+   * Sem isto o botão de salvar não faz nada quando a validação reprova: o
+   * react-hook-form apenas preenche `errors`, e campos fora da tela deixam o
+   * usuário sem pista nenhuma.
+   */
+  const handleFormInvalid = (erros: FieldErrors<FormValues>) => {
+    const campos = Object.keys(erros);
+    console.warn('Laudo não passou na validação. Campos com problema:', campos, erros);
+    notificar(
+      'Não foi possível salvar',
+      `Revise os campos: ${campos.join(', ')}`
+    );
+  };
 
   const handleFormSubmit = async (data: FormValues) => {
-    // Garantir fallback vazio para optional strings caso venha undefined
-    const parsedData = {
-      ...data,
-      cidadeEstado: `${data.cidade} - ${data.estado}`,
-      linhasTirantesObs: data.linhasTirantesObs || '',
-      linhasBatoquesArgolasObs: data.linhasBatoquesArgolasObs || '',
-      linhasRoldanasObs: data.linhasRoldanasObs || '',
-      linhasDistorcedorObs: data.linhasDistorcedorObs || '',
-      linhasCargaObs: data.linhasCargaObs || '',
-      linhasTrocaObs: data.linhasTrocaObs || '',
-      linhasSimetriaObs: data.linhasSimetriaObs || '',
-      linhasTrimagemObs: data.linhasTrimagemObs || '',
-      tecidoCheckPerfilObs: data.tecidoCheckPerfilObs || '',
-      tecidoCheckIntradorsoObs: data.tecidoCheckIntradorsoObs || '',
-      tecidoCheckBordoAtaqueObs: data.tecidoCheckBordoAtaqueObs || '',
-      tecidoCheckExtradorsoObs: data.tecidoCheckExtradorsoObs || '',
-    };
+    // Nenhum campo é obrigatório. Como o formulário pode entregar undefined,
+    // normalizamos tudo para string vazia: assim não grava undefined no banco
+    // nem imprime a palavra "undefined" no PDF.
+    const parsedData: Record<string, any> = { ...data };
+
+    // Campos que NÃO são texto: viram '' por engano e quebram quem os consome
+    // (porosidade é objeto, fotosAdicionais é lista, e as fotos precisam
+    // continuar undefined quando vazias para não renderizar imagem fantasma).
+    const naoTexto = ['porosidade', 'fotosAdicionais', 'fotoUri', 'fotoSeloUri'];
+
+    Object.keys(parsedData).forEach((key) => {
+      if (naoTexto.includes(key)) return;
+      if (parsedData[key] === undefined || parsedData[key] === null) {
+        parsedData[key] = '';
+      }
+    });
+
+    // Monta "Cidade - UF" sem deixar traço solto quando um dos dois está vazio
+    parsedData.cidadeEstado = [parsedData.cidade, parsedData.estado]
+      .filter((part) => part && String(part).trim() !== '')
+      .join(' - ');
+
     await onSubmit(parsedData as LaudoFormData);
   };
 
@@ -624,6 +661,7 @@ export function LaudoForm({
             render={({ field: { value, onChange } }) => (
               <DatePickerField
                 label="Data Fabricação"
+                mode="month"
                 value={value}
                 onChange={onChange}
                 error={errors.dataFabricacao?.message}
@@ -662,12 +700,32 @@ export function LaudoForm({
         </View>
       </View>
 
-      {/* FOTO DA VELA */}
-      <SectionHeader icon="camera" title="3. Identificação Visual (Foto)" />
+      {/* FOTOS DA VELA */}
+      <SectionHeader icon="camera" title="3. Identificação Visual (Fotos)" />
+
+      <Text style={styles.subTitle}>Foto da Vela</Text>
       <PhotoCapture
         photoUri={fotoUri}
         onPhotoSelected={(uri) => setValue('fotoUri', uri)}
         onPhotoRemoved={() => setValue('fotoUri', undefined)}
+      />
+
+      <Text style={styles.subTitle}>Selo de Informações</Text>
+      <PhotoCapture
+        photoUri={fotoSeloUri}
+        title="Adicionar Foto do Selo"
+        subtitle="Etiqueta de identificação da vela"
+        onPhotoSelected={(uri) => setValue('fotoSeloUri', uri)}
+        onPhotoRemoved={() => setValue('fotoSeloUri', undefined)}
+      />
+
+      <Text style={styles.subTitle}>Fotos Complementares</Text>
+      <Controller
+        control={control}
+        name="fotosAdicionais"
+        render={({ field: { value, onChange } }) => (
+          <PhotoGallery value={value} onChange={onChange} />
+        )}
       />
 
       {/* CHECAGEM DE LINHAS */}
@@ -744,6 +802,7 @@ export function LaudoForm({
             control={control}
             name="tecidoTesteResistencia"
             label="Teste de Resistência"
+            placeholder="Ex: Correto"
             error={errors.tecidoTesteResistencia?.message}
           />
         </View>
@@ -759,11 +818,20 @@ export function LaudoForm({
       />
       
 
-      <InputField
+      <Text style={styles.subTitle}>Parecer do Fabricante (Porosímetro)</Text>
+      <Controller
         control={control}
         name="parecerConformeFabricante"
-        label="Parecer Conforme Fabricante"
-        error={errors.parecerConformeFabricante?.message}
+        render={({ field: { value, onChange } }) => (
+          <SelectVertical
+            options={
+              Object.entries(PARECER_POROSIMETRO_LABELS) as [ParecerPorosimetro, string][]
+            }
+            value={value as ParecerPorosimetro}
+            onChange={onChange}
+            colors={PARECER_POROSIMETRO_COLORS}
+          />
+        )}
       />
       <InputField
         control={control}
@@ -792,7 +860,7 @@ export function LaudoForm({
       {/* BOTÃO SUBMIT */}
       <TouchableOpacity
         style={[styles.submitBtn, isLoading && styles.submitBtnDisabled]}
-        onPress={handleSubmit(handleFormSubmit)}
+        onPress={handleSubmit(handleFormSubmit, handleFormInvalid)}
         disabled={isLoading}
         activeOpacity={0.8}
       >

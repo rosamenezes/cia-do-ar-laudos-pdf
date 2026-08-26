@@ -1,21 +1,34 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { pickFromCamera, pickFromGallery } from '../services/imageService';
+import { confirmar, notificar } from '../utils/feedback';
 
 interface PhotoCaptureProps {
   photoUri?: string;
   onPhotoSelected: (uri: string) => void;
   onPhotoRemoved: () => void;
+  /** Título do estado vazio. Padrão: foto da vela */
+  title?: string;
+  subtitle?: string;
+  /** Altura da miniatura quando já existe foto */
+  height?: number;
 }
 
-export function PhotoCapture({ photoUri, onPhotoSelected, onPhotoRemoved }: PhotoCaptureProps) {
+export function PhotoCapture({
+  photoUri,
+  onPhotoSelected,
+  onPhotoRemoved,
+  title = 'Adicionar Foto da Vela',
+  subtitle = 'Escolha como deseja adicionar',
+  height = 200,
+}: PhotoCaptureProps) {
   const handleCamera = async () => {
     try {
       const result = await pickFromCamera();
       if (result) onPhotoSelected(result.uri);
     } catch (e: any) {
-      Alert.alert('Erro', e.message ?? 'Não foi possível acessar a câmera');
+      notificar('Erro', e.message ?? 'Não foi possível acessar a câmera');
     }
   };
 
@@ -24,20 +37,21 @@ export function PhotoCapture({ photoUri, onPhotoSelected, onPhotoRemoved }: Phot
       const result = await pickFromGallery();
       if (result) onPhotoSelected(result.uri);
     } catch (e: any) {
-      Alert.alert('Erro', e.message ?? 'Não foi possível acessar a galeria');
+      notificar('Erro', e.message ?? 'Não foi possível acessar a galeria');
     }
   };
 
-  const handleRemove = () => {
-    Alert.alert('Remover foto', 'Deseja remover a foto do laudo?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: onPhotoRemoved },
-    ]);
+  const handleRemove = async () => {
+    const ok = await confirmar('Remover foto', 'Deseja remover a foto do laudo?', {
+      rotuloConfirmar: 'Remover',
+      destrutivo: true,
+    });
+    if (ok) onPhotoRemoved();
   };
 
   if (photoUri) {
     return (
-      <View style={styles.photoContainer}>
+      <View style={[styles.photoContainer, { height }]}>
         <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
         {/* Overlay escuro no fundo */}
         <View style={styles.photoGradient}>
@@ -61,6 +75,8 @@ export function PhotoCapture({ photoUri, onPhotoSelected, onPhotoRemoved }: Phot
               style={[styles.photoBtn, styles.removeBtn]}
               onPress={handleRemove}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Remover foto"
             >
               <Ionicons name="trash" size={16} color="#fff" />
             </TouchableOpacity>
@@ -81,8 +97,8 @@ export function PhotoCapture({ photoUri, onPhotoSelected, onPhotoRemoved }: Phot
       <View style={styles.iconCircle}>
         <Ionicons name="camera" size={28} color="#db2777" />
       </View>
-      <Text style={styles.emptyTitle}>Adicionar Foto da Vela</Text>
-      <Text style={styles.emptySubtitle}>Escolha como deseja adicionar</Text>
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptySubtitle}>{subtitle}</Text>
 
       {/* Dois botões lado a lado */}
       <View style={styles.actionRow}>

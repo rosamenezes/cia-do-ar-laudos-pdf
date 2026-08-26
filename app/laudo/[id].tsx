@@ -34,6 +34,26 @@ function formatDate(iso: string): string {
 
 const GOOD_PARECERES = new Set(['OTIMO', 'MUITO_BOM', 'USADO_BOM_ESTADO']);
 
+/**
+ * O iPhone tem duas realidades diferentes aqui.
+ *
+ * No Safari com barra de endereço, `window.print()` abre a folha do sistema e
+ * o técnico salva ou envia o PDF normalmente. Já no app instalado na tela de
+ * início (o manifest declara `display: standalone`), o iOS simplesmente ignora
+ * a chamada: nenhum erro, nenhum diálogo, o botão parece morto.
+ *
+ * O caminho que funciona nos dois é entregar um arquivo pronto para a folha de
+ * compartilhamento nativa.
+ */
+function podeCompartilharArquivo(arquivo: File): boolean {
+  return (
+    typeof navigator !== 'undefined' &&
+    typeof navigator.share === 'function' &&
+    typeof navigator.canShare === 'function' &&
+    navigator.canShare({ files: [arquivo] })
+  );
+}
+
 export default function LaudoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
@@ -41,6 +61,8 @@ export default function LaudoDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [printHtml, setPrintHtml] = useState<string | null>(null);
+  const [arquivoPdf, setArquivoPdf] = useState<File | null>(null);
+  const [preparandoArquivo, setPreparandoArquivo] = useState(false);
 
   const loadLaudo = useCallback(async () => {
     try {
@@ -59,17 +81,73 @@ export default function LaudoDetailScreen() {
     }, [loadLaudo])
   );
 
+  /**
+   * Monta o PDF enquanto o técnico ainda está olhando a pré-visualização.
+   *
+   * Não dá para gerar o arquivo dentro do toque no botão: a montagem leva mais
+   * de um segundo (espera as fotos carregarem) e o iOS só aceita
+   * `navigator.share` enquanto o gesto do usuário ainda vale. Com o arquivo
+   * pronto de antemão, o toque só abre a folha de compartilhamento.
+   */
+  const prepararArquivoPdf = useCallback(async (alvo: LaudoParapente) => {
+    try {
+      setPreparandoArquivo(true);
+      const blob = await generatePdfBlob(alvo);
+      setArquivoPdf(new File([blob], `Laudo-${alvo.numeroLaudo}.pdf`, { type: 'application/pdf' }));
+    } catch (e) {
+      // Sem arquivo o botão ainda cai no window.print(), que resolve no
+      // navegador comum: não vale interromper o fluxo com um alerta.
+      console.error('Não foi possível preparar o PDF para compartilhamento:', e);
+    } finally {
+      setPreparandoArquivo(false);
+    }
+  }, []);
+
   const handleOpenPrintView = async () => {
     if (!laudo) return;
     try {
       setGeneratingPdf(true);
       const html = await generatePdfHtml(laudo);
       setPrintHtml(html);
+      prepararArquivoPdf(laudo); // roda em paralelo: a pré-visualização não espera
     } catch (e: any) {
       notificar('Erro ao processar visualização', e.message ?? '');
     } finally {
       setGeneratingPdf(false);
     }
+  };
+
+  const fecharPrintView = () => {
+    setPrintHtml(null);
+    setArquivoPdf(null);
+  };
+
+  const handleCompartilhar = async () => {
+    // `navigator.share` precisa ser a primeira coisa depois do toque: qualquer
+    // await antes dela faz o iOS recusar por perda do gesto do usuário.
+    if (arquivoPdf && podeCompartilharArquivo(arquivoPdf)) {
+      try {
+        await navigator.share({
+          files: [arquivoPdf],
+          title: `Laudo ${laudo?.numeroLaudo ?? ''}`.trim(),
+        });
+        return;
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return; // o técnico fechou a folha
+        console.error('Falha ao compartilhar o PDF:', e);
+      }
+    }
+
+    // Sem compartilhamento de arquivo: abre o PDF, que no iOS instalado cai no
+    // Safari e de lá o técnico usa a folha nativa.
+    if (arquivoPdf) {
+      const url = URL.createObjectURL(arquivoPdf);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      return;
+    }
+
+    window.print();
   };
 
   const handleDelete = async () => {
@@ -332,7 +410,7 @@ export default function LaudoDetailScreen() {
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16 }}>
               <TouchableOpacity
-                onPress={() => setPrintHtml(null)}
+                onPress={fecharPrintView}
                 style={{
                   paddingVertical: 12,
                   paddingHorizontal: 16,
@@ -343,16 +421,21 @@ export default function LaudoDetailScreen() {
                 <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>⬅ Fechar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => window.print()}
+                onPress={handleCompartilhar}
+                disabled={preparandoArquivo}
                 style={{
                   paddingVertical: 12,
                   paddingHorizontal: 16,
-                  backgroundColor: '#db2777',
+                  backgroundColor: preparandoArquivo ? '#9d174d' : '#db2777',
                   borderRadius: 10,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
                 }}
               >
+                {preparandoArquivo && <ActivityIndicator size="small" color="#fff" />}
                 <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
-                  Compartilhar / Salvar
+                  {preparandoArquivo ? 'Preparando PDF…' : 'Compartilhar / Salvar'}
                 </Text>
               </TouchableOpacity>
             </View>

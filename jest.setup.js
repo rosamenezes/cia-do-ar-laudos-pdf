@@ -45,27 +45,10 @@ jest.mock('@expo/vector-icons', () => {
   };
 });
 
-// Mock expo-sqlite
-jest.mock('expo-sqlite', () => ({
-  openDatabaseAsync: jest.fn().mockResolvedValue({
-    execAsync: jest.fn().mockResolvedValue(undefined),
-    getAllAsync: jest.fn().mockResolvedValue([]),
-    getFirstAsync: jest.fn().mockResolvedValue(null),
-    runAsync: jest.fn().mockResolvedValue({ lastInsertRowId: 1, changes: 1 }),
-    withTransactionAsync: jest.fn((callback) => callback()),
-  }),
-}));
-
 // Mock expo-print
 jest.mock('expo-print', () => ({
   printToFileAsync: jest.fn().mockResolvedValue({ uri: 'file:///mock/path/laudo.pdf' }),
   printAsync: jest.fn().mockResolvedValue(undefined),
-}));
-
-// Mock expo-sharing
-jest.mock('expo-sharing', () => ({
-  isAvailableAsync: jest.fn().mockResolvedValue(true),
-  shareAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Mock expo-image-picker
@@ -107,13 +90,4 @@ jest.mock('@react-native-community/datetimepicker', () => {
   };
 });
 
-// Mock react-native-webview
-jest.mock('react-native-webview', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  return {
-    WebView: function MockWebView(props) {
-      return React.createElement(View, { testID: 'webview', ...props });
-    },
-  };
-});
+

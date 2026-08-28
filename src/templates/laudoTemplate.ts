@@ -205,12 +205,13 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
   // As três primeiras ganham destaque (folha inteira / meia folha);
   // da quarta em diante vão para a grade de miniaturas.
   const filaFotos = [
-    { base64: fotoBase64, titulo: '📷 REGISTRO FOTOGRÁFICO DO EQUIPAMENTO', legenda: '' },
-    { base64: fotoSeloBase64, titulo: '🏷️ SELO DE INFORMAÇÕES DA VELA', legenda: '' },
+    { base64: fotoBase64, titulo: '📷 REGISTRO FOTOGRÁFICO DO EQUIPAMENTO', legenda: '', selo: false },
+    { base64: fotoSeloBase64, titulo: '🏷️ SELO DE INFORMAÇÕES DA VELA', legenda: '', selo: true },
     ...fotosAdicionais.map((foto, i) => ({
       base64: foto.base64,
       titulo: `🔍 REGISTRO COMPLEMENTAR ${i + 1}`,
       legenda: foto.descricao,
+      selo: false,
     })),
   ].filter((foto) => foto.base64);
 
@@ -220,12 +221,12 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
   const fotosMiniatura = filaFotos.slice(3);
 
   const renderFotoDestaque = (
-    foto: { base64: string; titulo: string; legenda: string } | undefined,
+    foto: { base64: string; titulo: string; legenda: string; selo?: boolean } | undefined,
     classe: string
   ) => {
     if (!foto) return '';
     return `
-      <div class="foto-card ${classe}">
+      <div class="foto-card ${classe}${foto.selo ? ' foto-selo' : ''}">
         <div class="foto-header">${foto.titulo}</div>
         <div class="foto-body">
           <img src="${foto.base64}" alt="${foto.titulo}" />
@@ -609,6 +610,12 @@ export async function generateLaudoHtml(laudo: LaudoParapente): Promise<string> 
     }
     .foto-meia:last-child {
       margin-bottom: 0;
+    }
+    /* O selo costuma ser um retrato e enchia os 100mm inteiros, saindo maior
+       que a própria foto do equipamento. 30% menor devolve a proporção e
+       ainda libera espaço na folha. */
+    .foto-meia.foto-selo {
+      height: 70mm;
     }
     .foto-legenda {
       padding: 5px 10px;

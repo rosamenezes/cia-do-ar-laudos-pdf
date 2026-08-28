@@ -66,6 +66,39 @@ describe('LaudoDetailScreen', () => {
     atualizadoEm: new Date().toISOString(),
   };
 
+
+  const UA_IPHONE =
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+  const UA_ANDROID =
+    'Mozilla/5.0 (Linux; Android 14; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+  const UA_DESKTOP =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+  function montarAparelho({ userAgent, instalado }: { userAgent: string; instalado: boolean }) {
+    const print = jest.fn();
+    const doc = { write: jest.fn(), close: jest.fn() };
+    const open = jest.fn().mockReturnValue({ document: doc });
+    const g = globalThis as any;
+    g.window = Object.assign(g.window ?? {}, {
+      print,
+      open,
+      matchMedia: () => ({ matches: instalado }),
+      navigator: { userAgent, maxTouchPoints: 0 },
+    });
+    return { print, open, doc };
+  }
+
+  async function apertarCompartilhar(getByText: any) {
+    await waitFor(() => getByText('Mariana Lima'));
+    await act(async () => {
+      fireEvent.press(getByText('Gerar PDF (Compartilhar / Salvar)'));
+    });
+    await waitFor(() => getByText('Compartilhar / Salvar'));
+    await act(async () => {
+      fireEvent.press(getByText('Compartilhar / Salvar'));
+    });
+  }
+
   it('deve carregar e renderizar os detalhes do laudo', async () => {
     (database.getLaudoById as jest.Mock).mockResolvedValueOnce(mockLaudo);
 
@@ -88,63 +121,49 @@ describe('LaudoDetailScreen', () => {
   });
 
   /**
-   * Fora do app instalado o botão TEM que continuar imprimindo. Foi trocar isso
-   * sem querer que já fez o laudo sair em branco em todos os aparelhos.
+   * O `display-mode: standalone` sozinho não serve para decidir: ele é
+   * verdadeiro também no PWA do Android, onde imprimir funciona e abrir aba
+   * cai num `about:blank` sem opção de enviar. Só o iPhone instalado é exceção.
    */
-  it('deve imprimir, e não abrir aba, quando não é o app instalado', async () => {
+  it('deve imprimir no desktop', async () => {
     (database.getLaudoById as jest.Mock).mockResolvedValueOnce(mockLaudo);
-
-    const print = jest.fn();
-    const open = jest.fn();
-    const g = globalThis as any;
-    g.window = Object.assign(g.window ?? {}, {
-      print,
-      open,
-      matchMedia: () => ({ matches: false }),
-      navigator: {},
-    });
+    const { print, open } = montarAparelho({ userAgent: UA_DESKTOP, instalado: false });
 
     const { getByText } = render(<LaudoDetailScreen />);
-    await waitFor(() => getByText('Mariana Lima'));
-
-    await act(async () => {
-      fireEvent.press(getByText('Gerar PDF (Compartilhar / Salvar)'));
-    });
-    await waitFor(() => getByText('Compartilhar / Salvar'));
-
-    await act(async () => {
-      fireEvent.press(getByText('Compartilhar / Salvar'));
-    });
+    await apertarCompartilhar(getByText);
 
     expect(print).toHaveBeenCalledTimes(1);
     expect(open).not.toHaveBeenCalled();
   });
 
-  it('deve abrir o laudo numa aba quando roda como app instalado', async () => {
+  it('deve imprimir no PWA instalado do Android', async () => {
     (database.getLaudoById as jest.Mock).mockResolvedValueOnce(mockLaudo);
-
-    const print = jest.fn();
-    const doc = { write: jest.fn(), close: jest.fn() };
-    const open = jest.fn().mockReturnValue({ document: doc });
-    const g = globalThis as any;
-    g.window = Object.assign(g.window ?? {}, {
-      print,
-      open,
-      matchMedia: () => ({ matches: true }),
-      navigator: {},
-    });
+    const { print, open } = montarAparelho({ userAgent: UA_ANDROID, instalado: true });
 
     const { getByText } = render(<LaudoDetailScreen />);
-    await waitFor(() => getByText('Mariana Lima'));
+    await apertarCompartilhar(getByText);
 
-    await act(async () => {
-      fireEvent.press(getByText('Gerar PDF (Compartilhar / Salvar)'));
-    });
-    await waitFor(() => getByText('Compartilhar / Salvar'));
+    expect(print).toHaveBeenCalledTimes(1);
+    expect(open).not.toHaveBeenCalled();
+  });
 
-    await act(async () => {
-      fireEvent.press(getByText('Compartilhar / Salvar'));
-    });
+  it('deve imprimir no Safari em aba, mesmo sendo iPhone', async () => {
+    (database.getLaudoById as jest.Mock).mockResolvedValueOnce(mockLaudo);
+    const { print, open } = montarAparelho({ userAgent: UA_IPHONE, instalado: false });
+
+    const { getByText } = render(<LaudoDetailScreen />);
+    await apertarCompartilhar(getByText);
+
+    expect(print).toHaveBeenCalledTimes(1);
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it('deve abrir o laudo numa aba só no iPhone instalado', async () => {
+    (database.getLaudoById as jest.Mock).mockResolvedValueOnce(mockLaudo);
+    const { print, open, doc } = montarAparelho({ userAgent: UA_IPHONE, instalado: true });
+
+    const { getByText } = render(<LaudoDetailScreen />);
+    await apertarCompartilhar(getByText);
 
     expect(open).toHaveBeenCalledWith('', '_blank');
     expect(doc.write).toHaveBeenCalledWith('<html><body>laudo</body></html>');

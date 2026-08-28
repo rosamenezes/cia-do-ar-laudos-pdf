@@ -35,18 +35,27 @@ function formatDate(iso: string): string {
 const GOOD_PARECERES = new Set(['OTIMO', 'MUITO_BOM', 'USADO_BOM_ESTADO']);
 
 /**
- * O app foi instalado na tela de início (iOS) ou aberto como app instalado?
+ * É um iPhone/iPad com o app instalado na tela de início?
  *
- * É a única situação em que `window.print()` não serve: o iOS ignora a chamada
- * sem erro nenhum e o botão fica morto. No Safari com barra de endereço e no
- * desktop a impressão funciona, então lá nada muda.
+ * Só nesse caso `window.print()` não serve: o iOS ignora a chamada sem erro e o
+ * botão fica morto. Em todo o resto — Safari com barra de endereço, desktop e
+ * **o PWA do Android** — a impressão funciona e é o caminho certo.
+ *
+ * O `display-mode: standalone` sozinho não distingue: ele também é verdadeiro
+ * no PWA instalado do Android, onde abrir uma nova aba cai num navegador
+ * embutido em `about:blank` que não oferece enviar o laudo.
  */
-function ehAppInstalado(): boolean {
+function ehIphoneInstalado(): boolean {
   if (typeof window === 'undefined') return false;
+  const nav = window.navigator as any;
+  const ua: string = nav?.userAgent ?? '';
+  // O iPadOS 13+ se anuncia como Mac: o toque é o que o entrega.
+  const ehIos = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && nav?.maxTouchPoints > 1);
+  if (!ehIos) return false;
+
   const porMedia = window.matchMedia?.('(display-mode: standalone)')?.matches === true;
   // `navigator.standalone` é a forma antiga, e é o que responde em iOS mais velho
-  const porNavigator = (window.navigator as any)?.standalone === true;
-  return porMedia || porNavigator;
+  return porMedia || nav?.standalone === true;
 }
 
 export default function LaudoDetailScreen() {
@@ -96,7 +105,7 @@ export default function LaudoDetailScreen() {
    * canvas — o bucket do Storage não libera CORS, e elas sairiam em branco.
    */
   const handleCompartilhar = () => {
-    if (!ehAppInstalado()) {
+    if (!ehIphoneInstalado()) {
       window.print();
       return;
     }
